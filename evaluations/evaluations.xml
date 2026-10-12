@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<evaluation fixture="cursodex-fixture-v2-memory" agent="codex">
+  <qa_pair><question>Using paginated task and inbox reads, find the source delivery whose assertion count is larger than the copy change. What exact artifact name is attached to its message? Return the artifact value without its prefix.</question><answer>parser-r1</answer></qa_pair>
+  <qa_pair><question>Read the cedar-baseline shared memory note and corroborate its hold with the referenced reconciliation task and held cache task. Which agent owns the reconciliation that explains the hold? Return the agent name.</question><answer>codex</answer></qa_pair>
+  <qa_pair><question>Read the source-delivery messages and related task evidence. How many assertions were executed across both delivered source changes? Return an integer.</question><answer>0</answer></qa_pair>
+  <qa_pair><question>Follow the cache hold in sent messages to the task containing the replacement baseline identity. Return that current identity without the current-sha prefix.</question><answer>cedar-current-43</answer></qa_pair>
+  <qa_pair><question>Compare the original baseline task and the blocked reconciliation. Return the original parent identity, without its parent-sha prefix.</question><answer>cedar-parent-42</answer></qa_pair>
+  <qa_pair><question>Read both source-delivery task receipts and correlate them with inbox messages. What is their combined count of authored assertions? Return an integer.</question><answer>56</answer></qa_pair>
+  <qa_pair><question>Read the cedar-validation shared memory note, then corroborate the install count in the referenced phone-validation task and its messages. How many phone installs are evidenced by this frozen fixture? Return an integer.</question><answer>0</answer></qa_pair>
+  <qa_pair><question>Read tasks with limit 2 until pagination ends. Among the blocked tasks, trace the message identifying the common decision. Return its decision key.</question><answer>gate-7</answer></qa_pair>
+  <qa_pair><question>Locate the task with the smaller delivered assertion count and cross-reference its inbox receipt. Return the assignee of that task.</question><answer>cursor</answer></qa_pair>
+  <qa_pair><question>Inspect the native-pending decision in sent messages and the related task. What is the exact recorded state of that task? Return only the state.</question><answer>planned</answer></qa_pair>
+</evaluation>

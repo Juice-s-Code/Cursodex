@@ -1,0 +1,9 @@
+node_modules
+.git
+.cursodex
+.env
+.env.*
+*.log
+*.tgz
+coverage
+test

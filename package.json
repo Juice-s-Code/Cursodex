@@ -1,0 +1,43 @@
+{
+  "name": "cursodex-mcp",
+  "version": "0.1.0",
+  "description": "A durable, bounded MCP coordination bridge for Codex and Cursor",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "cursodex": "bin/cursodex.mjs"
+  },
+  "engines": {
+    "node": ">=22.13.0 <23 || >=24.0.0 <25"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Juice-s-Code/Cursodex.git"
+  },
+  "homepage": "https://github.com/Juice-s-Code/Cursodex#readme",
+  "bugs": {
+    "url": "https://github.com/Juice-s-Code/Cursodex/issues"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "cli/",
+    "templates/",
+    "README.md",
+    "LICENSE",
+    "docs/",
+    "evaluations/",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "CONTRIBUTING.md"
+  ],
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test --test-concurrency=1 test/*.test.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "zod": "4.6.6",
+    "smol-toml": "1.9.1"
+  }
+}

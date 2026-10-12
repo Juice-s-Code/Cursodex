@@ -1,0 +1,23 @@
+services:
+  cursodex:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8787:8787"
+    environment:
+      CURSODEX_CODEX_TOKEN: ${CURSODEX_CODEX_TOKEN:?set a distinct Codex credential}
+      CURSODEX_CURSOR_TOKEN: ${CURSODEX_CURSOR_TOKEN:?set a distinct Cursor credential}
+      CURSODEX_ALLOWED_HOSTS: ${CURSODEX_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      CURSODEX_ALLOWED_ORIGINS: ${CURSODEX_ALLOWED_ORIGINS:-}
+    volumes:
+      - cursodex-data:/workspace
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+volumes:
+  cursodex-data:

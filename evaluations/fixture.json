@@ -1,0 +1,113 @@
+{
+  "version": "cursodex-fixture-v2-memory",
+  "project": "Fictional Cedar Review",
+  "instructions": "Seed only into a NEW empty canonical real disposable project using evaluations/seed-evaluation.js --disposable-fixture. Evaluation callers use read-only tools as codex; no production data.",
+  "tasks": [
+    {
+      "key": "e01",
+      "assignee": "cursor",
+      "title": "Bounded parser source",
+      "summary": "Owns Shared/Parser.swift. Dependency: e02. Accepted source only.",
+      "evidence": "review-r1:44 assertions authored; execution=0",
+      "state": "done"
+    },
+    {
+      "key": "e02",
+      "assignee": "codex",
+      "title": "Capture ownership baseline",
+      "summary": "Captured exact source identity before parser work.",
+      "evidence": "parent-sha:cedar-parent-42",
+      "state": "done"
+    },
+    {
+      "key": "e03",
+      "assignee": "cursor",
+      "title": "Cache update",
+      "summary": "Waiting for parser source acceptance. Dependency: e01.",
+      "evidence": "request:gate-7",
+      "state": "blocked"
+    },
+    {
+      "key": "e04",
+      "assignee": "codex",
+      "title": "Phone validation",
+      "summary": "No native run; source-only receipt does not authorize build.",
+      "evidence": "native=0; install=0",
+      "state": "planned"
+    },
+    {
+      "key": "e05",
+      "assignee": "cursor",
+      "title": "Accessibility strings",
+      "summary": "Reviewed bounded copy changes.",
+      "evidence": "review-copy:12 assertions authored; execution=0",
+      "state": "done"
+    },
+    {
+      "key": "e06",
+      "assignee": "codex",
+      "title": "Cache evidence reconciliation",
+      "summary": "Current identity differs from proposed parent; update request e03 held.",
+      "evidence": "current-sha:cedar-current-43",
+      "state": "blocked"
+    }
+  ],
+  "messages": [
+    {
+      "sender": "cursor",
+      "key": "m01",
+      "body": "Parser source delivered for task e01. All 44 assertions remain authored, not executed.",
+      "evidence": "artifact:parser-r1",
+      "ack": true
+    },
+    {
+      "sender": "codex",
+      "key": "m02",
+      "body": "Hold cache e03: baseline e02 is superseded; consult reconciliation e06.",
+      "evidence": "decision:gate-7",
+      "ack": false
+    },
+    {
+      "sender": "cursor",
+      "key": "m03",
+      "body": "Acknowledged cache hold. No native or install work performed.",
+      "evidence": "native=0; install=0",
+      "ack": true
+    },
+    {
+      "sender": "cursor",
+      "key": "m04",
+      "body": "Copy task e05 source receipt saved; twelve assertions authored.",
+      "evidence": "artifact:copy-r1",
+      "ack": false
+    },
+    {
+      "sender": "codex",
+      "key": "m05",
+      "body": "Validation e04 remains planned after source delivery. Do not infer runtime success.",
+      "evidence": "decision:native-pending",
+      "ack": false
+    },
+    {
+      "sender": "cursor",
+      "key": "m06",
+      "body": "Cross-check e01 and e05: two source deliveries, zero executed assertions.",
+      "evidence": "review-summary",
+      "ack": false
+    }
+  ],
+  "memories": [
+    {
+      "name": "cedar-baseline",
+      "author": "codex",
+      "body": "Baseline task e02 recorded cedar-parent-42. Cache reconciliation task e06 is owned by codex and records cedar-current-43. The new identity supersedes the captured parent, so cache task e03 remains blocked under decision gate-7.",
+      "evidence": "task:e02; task:e03; task:e06; decision:gate-7"
+    },
+    {
+      "name": "cedar-validation",
+      "author": "codex",
+      "body": "Parser e01 delivered 44 authored assertions and accessibility copy e05 delivered 12 authored assertions. Executed assertions remain 0. Phone validation task e04 remains planned with native=0 and install=0. Source delivery is not runtime acceptance.",
+      "evidence": "task:e01; task:e04; task:e05; execution=0; install=0"
+    }
+  ]
+}
