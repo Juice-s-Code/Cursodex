@@ -35,6 +35,7 @@
     "Dockerfile",
     "compose.yaml",
     ".dockerignore",
+    "npm-shrinkwrap.json",
     ".env.example",
     "scripts/"
   ],
