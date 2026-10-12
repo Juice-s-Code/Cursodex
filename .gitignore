@@ -7,3 +7,7 @@ node_modules/
 *.tgz
 coverage/
 .DS_Store
+
+# Generated host configuration contains machine-local executable/project paths.
+.codex/
+.cursor/
