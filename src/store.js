@@ -95,8 +95,8 @@ export class Store {
     if (!result) fail('NOT_FOUND', 'No such ' + table + ' record.');
     return result;
   }
-  messageView(r) { const { payload, idem_key, ...v } = r; return v; }
-  taskView(r) { const { payload, idem_key, ...v } = r; return v; }
+  messageView(r) { const { payload, idem_key, ...v } = r; return { ...v, key: idem_key }; }
+  taskView(r) { const { payload, idem_key, ...v } = r; return { ...v, key: idem_key }; }
   claimView(r) {
     return { id: r.id, actor: r.actor, resources: JSON.parse(r.resources), expires_at: r.expires_at, released_at: r.released_at,
       active: r.released_at === null && r.expires_at > this.now(), ...(r.actor === this.actor ? { token: r.token } : {}) };

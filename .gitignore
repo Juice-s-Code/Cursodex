@@ -11,3 +11,6 @@ coverage/
 # Generated host configuration contains machine-local executable/project paths.
 .codex/
 .cursor/
+
+# Local Obsidian UI state created when opening the source folder.
+.obsidian/

@@ -142,3 +142,89 @@ test('tools/resources/prompts advertise modern scoped capabilities and reject ac
   const spoof = await a.callTool({ name: 'cursodex_send_message', arguments: { sender: 'cursor', recipient: 'cursor', key: 'spoof', body: 'no' } });
   assert.equal(spoof.isError, true);
 });
+
+function assertPublicKeyView(row, key) {
+  assert.equal(row.key, key);
+  assert.equal(Object.hasOwn(row, 'payload'), false, 'internal retry payload must remain hidden');
+  assert.equal(Object.hasOwn(row, 'idem_key'), false, 'internal column name must remain hidden');
+}
+
+test('task reads expose the assignment key through pagination, CAS and reconnect without exposing internals', { timeout: 15000 }, async t => {
+  const { root, a, b } = await pair(t);
+  const request = { key: 'actual-host-dogfood-r1', assignee: 'cursor', title: 'Review a fictional Cedar parser', evidence: 'fixture:cedar-key-visibility' };
+  const otherActor = (await call(b, 'create_task', { key: request.key, assignee: 'codex', title: 'Another actor owns this independent task' })).data;
+  const assigned = (await call(a, 'create_task', request)).data;
+  await call(a, 'create_task', { key: 'another-assignment', assignee: 'cursor', title: 'Unrelated task' });
+  assertPublicKeyView(assigned, request.key);
+  assertPublicKeyView(otherActor, request.key);
+  assert.notEqual(assigned.id, otherActor.id);
+  const seen = [];
+  let after = 0;
+  for (let page = 0; page < 4; page++) {
+    const result = await call(b, 'list_tasks', { after, limit: 1 });
+    assert.equal(result.ok, true);
+    seen.push(...result.data.items);
+    if (!result.data.has_more) break;
+    assert.ok(result.data.next_cursor > after);
+    after = result.data.next_cursor;
+  }
+  assert.equal(seen.length, 3);
+  assert.equal(seen.filter(row => row.key === request.key).length, 2, 'keys remain namespaced by creator');
+  const matching = seen.filter(row => row.key === request.key && row.creator === 'codex');
+  assert.equal(matching.length, 1);
+  assert.equal(matching[0].id, assigned.id);
+  for (const row of seen) assertPublicKeyView(row, row.id === assigned.id || row.id === otherActor.id ? request.key : 'another-assignment');
+  const read = (await call(b, 'get_task', { id: matching[0].id })).data;
+  assertPublicKeyView(read, request.key);
+  const updated = (await call(b, 'update_task', { id: read.id, expected_revision: read.revision, state: 'active', summary: 'Assignment matched by its key.', evidence: 'fixture:matched' })).data;
+  assertPublicKeyView(updated, request.key);
+  const retry = (await call(a, 'create_task', request)).data;
+  assertPublicKeyView(retry, request.key);
+  assert.equal(retry.id, assigned.id);
+  assert.equal(retry.revision, updated.revision);
+  assert.equal(retry.summary, updated.summary);
+  assert.equal((await call(a, 'create_task', { ...request, title: 'Changed retry payload' })).error.code, 'IDEMPOTENCY_CONFLICT');
+  const reopened = await client(root, 'cursor');
+  try {
+    const retained = (await call(reopened, 'get_task', { id: assigned.id })).data;
+    assertPublicKeyView(retained, request.key);
+    assert.equal(retained.state, 'active');
+    assert.equal(retained.revision, updated.revision);
+  } finally { await reopened.close(); }
+});
+
+test('scoped message reads retain the public key after acknowledgement, exact retry and reconnect', { timeout: 15000 }, async t => {
+  const { root, a, b } = await pair(t);
+  const key = 'receipt.' + 'k'.repeat(120);
+  assert.equal(key.length, 128);
+  const request = { recipient: 'cursor', key, body: 'Fictional Cedar source delivered.', evidence: 'fixture:source-only' };
+  const sent = (await call(a, 'send_message', request)).data;
+  assertPublicKeyView(sent, key);
+  const reply = (await call(b, 'send_message', { recipient: 'codex', key, body: 'Fictional receipt read.', reply_to: sent.id })).data;
+  assertPublicKeyView(reply, key);
+  assert.notEqual(reply.id, sent.id);
+  for (const [reader, direction, expected] of [[a, 'sent', sent], [b, 'inbox', sent], [b, 'sent', reply], [a, 'inbox', reply]]) {
+    const page = (await call(reader, 'list_messages', { direction, limit: 1 })).data;
+    assert.equal(page.count, 1);
+    assert.equal(page.items[0].id, expected.id);
+    assertPublicKeyView(page.items[0], key);
+  }
+  assert.equal((await call(a, 'ack_message', { id: sent.id })).error.code, 'FORBIDDEN');
+  const acknowledged = (await call(b, 'ack_message', { id: sent.id })).data;
+  assertPublicKeyView(acknowledged, key);
+  assert.ok(acknowledged.ack_at > 0);
+  const cursor = (await call(a, 'status')).data.latest_event;
+  const retry = (await call(a, 'send_message', request)).data;
+  assertPublicKeyView(retry, key);
+  assert.equal(retry.id, sent.id);
+  assert.equal(retry.ack_at, acknowledged.ack_at);
+  assert.equal((await call(a, 'status')).data.latest_event, cursor);
+  assert.equal((await call(a, 'send_message', { ...request, body: 'Changed retry payload' })).error.code, 'IDEMPOTENCY_CONFLICT');
+  const reopened = await client(root, 'cursor');
+  try {
+    const retained = (await call(reopened, 'list_messages', { limit: 1 })).data.items[0];
+    assertPublicKeyView(retained, key);
+    assert.equal(retained.id, sent.id);
+    assert.equal(retained.ack_at, acknowledged.ack_at);
+  } finally { await reopened.close(); }
+});

@@ -23,6 +23,8 @@ Record decisions and explanations that another person can assess: what changed, 
 
 ## Send a concrete handoff
 
+Task and message reads include the caller-supplied `key` label. Match tasks by creator plus key, and messages by sender plus key; the same label from different actors identifies separate records. Keys are shared metadata, so use descriptive labels and keep secrets out of them. Internal retry payloads remain hidden.
+
 Use a task for the bounded objective and its current revision. Use a fresh exact-payload message key for the handoff, send only to the other configured actor, and include the task/claim/artifact references needed to act. The recipient acknowledges receipt and replies to that message ID with findings or a completion receipt. Acknowledgement is not approval.
 
 Acquire the appropriate advisory claims before authorized edits, retain the owner ID/token and renew while active. Recheck source identity before publication. Claims do not override project/user/resource gates or lock external programs. lane:native is a coordination symbol for the configured codex actor, not build permission.

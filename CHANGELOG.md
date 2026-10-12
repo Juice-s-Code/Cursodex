@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2 — 2026-10-12
+
+- Expose caller-supplied task and message keys on read, retry, update and acknowledgement results, so active hosts can match assignments and receipts. Retain per-actor key namespaces and hide internal retry payloads.
+- Add paired SDK regression coverage for key lookup, pagination, CAS, acknowledgement, exact retries and reconnect.
+- Keep machine-local Obsidian UI state out of source publication alongside generated host configurations.
+
 ## 0.1.1 — 2026-10-12
 
 - Correct two Windows test assertions to use the same canonical filesystem path form as the server; retain Unicode, UTF-8 and private-state checks. Runtime behavior is unchanged.
