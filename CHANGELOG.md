@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1 — 2026-10-12
+
+- Correct two Windows test assertions to use the same canonical filesystem path form as the server; retain Unicode, UTF-8 and private-state checks. Runtime behavior is unchanged.
+- Keep the initial v0.1.0 release and its checksums intact.
+
 ## 0.1.0 — 2026-10-12
 
 Initial public Cursodex release under Juice Code.

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { realpathSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { Worker } from 'node:worker_threads';
 import fs from 'node:fs/promises';
@@ -186,7 +187,7 @@ test('valid UTF-8 split inside a multibyte character survives actual stdio with 
   p.raw(frame.subarray(firstByte + 2));
   assert.equal(structured(await p.response(2)).data.body, body);
   const status = structured(await p.request(3, 'tools/call', { name: 'cursodex_status', arguments: {} }));
-  assert.equal(status.data.project_root, await fs.realpath(f.root));
+  assert.equal(status.data.project_root, realpathSync(f.root));
   p.assertClean();
 });
 
@@ -295,7 +296,7 @@ test('actual createServer works for a portable Unicode project and keeps generat
   await server.connect(serverTransport);
   await client.connect(clientTransport);
   const reply = await client.callTool({ name: 'cursodex_status', arguments: {} });
-  assert.equal(reply.structuredContent.data.project_root, await fs.realpath(f.root));
+  assert.equal(reply.structuredContent.data.project_root, realpathSync(f.root));
   assert.equal(reply.structuredContent.data.agent, 'codex');
   if (process.platform === 'win32') {
     t.diagnostic('POSIX mode assertions do not measure Windows ACLs');
