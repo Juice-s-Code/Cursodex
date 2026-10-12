@@ -220,7 +220,7 @@ test('DELETE during a pending SDK wait returns its genuine response and closes t
   assert.match(JSON.parse(response.body).error, /initialize a new session/);
   const rejected = await within(wait.settled, 'pending SDK call rejected after DELETE');
   assert.equal(rejected.value, undefined);
-  assert.match(rejected.error?.message ?? '', /503/);
+  assert.equal(rejected.error?.code, 503);
   await retired(url, 'cursor', sessionId, version);
   assert.equal((await call((await connect('cursor')).client, 'status')).data.agent, 'cursor');
 });
@@ -238,7 +238,7 @@ test('more than 32 cancellation and DELETE cycles preserve fresh-client HTTP cap
       assert.equal((await within(wait.exchange.completed.promise, 'capacity-cycle pending HTTP request')).status, 503);
       const rejected = await within(wait.settled, 'capacity-cycle pending SDK request');
       assert.equal(rejected.value, undefined);
-      assert.match(rejected.error?.message ?? '', /503/);
+      assert.equal(rejected.error?.code, 503);
     }
     await retired(url, actor, sessionId, version);
     await session.client.close();
