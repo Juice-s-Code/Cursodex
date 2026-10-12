@@ -1,6 +1,6 @@
 FROM node:22-bookworm-slim
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY package.json npm-shrinkwrap.json ./
 RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund \
     && mkdir -p /workspace && chown node:node /workspace
 COPY --chown=node:node src ./src

@@ -1,7 +1,8 @@
 import { createServer as httpServer } from 'node:http';
 import { createHash, randomUUID, timingSafeEqual } from 'node:crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import { CancelledNotificationSchema, isInitializeRequest, isJSONRPCNotification, isJSONRPCRequest } from '@modelcontextprotocol/sdk/types.js';
 import { createServer } from './index.js';
 import { Store } from './store.js';
 
@@ -46,15 +47,87 @@ export async function startCloud({ projectRoot, host = '127.0.0.1', port = 8787,
   // Validate/open the durable project before binding; do not infer identity from a request.
   const probe = new Store(projectRoot, 'codex'); probe.close();
   const sessions = new Map(), records = new Set(); let inflight = 0, closing = false;
+  const dispatchContext = new AsyncLocalStorage();
   const origins = new Set((env.CURSODEX_ALLOWED_ORIGINS ?? '').split(',').filter(Boolean));
   const configuredHosts = (env.CURSODEX_ALLOWED_HOSTS ?? '').split(',').filter(Boolean);
   const hostnames = new Set((configuredHosts.length ? configuredHosts : ['localhost', '127.0.0.1', '[::1]']).map(h => h.toLowerCase()));
-  async function closeSession(record) {
+  const cleanupFailure = () => {
+    process.exitCode = 1;
+    if (log) process.stderr.write('Cursodex session cleanup failed; retain state and review server health.\n');
+  };
+  async function closeSession(record, preserveResponse = null) {
     if (record.closed) return;
     record.closed = true;
     records.delete(record);
     if (record.transport.sessionId) sessions.delete(record.transport.sessionId);
+    // SDK JSON-response promises do not settle on cancellation/transport close.
+    // End the actual outstanding responses before dropping their session state.
+    for (const exchange of record.exchanges) if (exchange !== preserveResponse) exchange.end(503);
     try { await record.mcp.close(); } finally { record.store.close(); }
+  }
+  function beginExchange(req, res) {
+    let resolveEnded;
+    const exchange = { record: null, ids: [], method: req.method, settled: false,
+      ended: new Promise(resolve => { resolveEnded = resolve; }),
+      end(status) {
+        if (res.writableEnded || res.destroyed) return;
+        if (res.headersSent) { res.destroy(); return; }
+        if (status === 202) { res.writeHead(202); res.end(); }
+        else json(res, status, 'MCP session closed; initialize a new session.');
+      } };
+    const settle = () => {
+      if (exchange.settled) return;
+      exchange.settled = true;
+      inflight--;
+      res.removeListener('finish', settle); res.removeListener('close', onClose);
+      const record = exchange.record;
+      if (record) {
+        record.busy--; record.exchanges.delete(exchange);
+        for (const id of exchange.ids) {
+          const owners = record.requests.get(id);
+          owners?.delete(exchange);
+          if (owners?.size === 0) record.requests.delete(id);
+        }
+      }
+      resolveEnded();
+    };
+    const onClose = () => {
+      const unfinished = !res.writableFinished, record = exchange.record;
+      settle();
+      // A disconnected pending call must not retain SDK JSON stream mappings.
+      if (unfinished && record && !record.closed) void closeSession(record).catch(cleanupFailure);
+    };
+    inflight++;
+    res.once('finish', settle); res.once('close', onClose);
+    return exchange;
+  }
+  async function dispatch(record, exchange, req, res, parsed) {
+    if (exchange.settled) return;
+    exchange.record = record; record.busy++; record.exchanges.add(exchange);
+    for (const message of Array.isArray(parsed) ? parsed : [parsed]) {
+      if (!isJSONRPCRequest(message) || message.method === 'initialize') continue;
+      exchange.ids.push(message.id);
+      if (!record.requests.has(message.id)) record.requests.set(message.id, new Set());
+      record.requests.get(message.id).add(exchange);
+    }
+    // The HTTP lifecycle, not an unresolved SDK promise, owns admission/busy slots.
+    await Promise.race([dispatchContext.run(exchange, () => record.transport.handleRequest(req, res, parsed)), exchange.ended]);
+  }
+  function ownCancellation(record) {
+    const receive = record.transport.onmessage;
+    record.transport.onmessage = (message, extra) => {
+      receive?.(message, extra);
+      if (!isJSONRPCNotification(message)) return;
+      const cancellation = CancelledNotificationSchema.safeParse(message);
+      if (!cancellation.success || cancellation.data.params.requestId === undefined) return;
+      const targets = [...(record.requests.get(cancellation.data.params.requestId) ?? [])].filter(exchange => !exchange.settled);
+      if (!targets.length) return; // late/unknown cancellation must not retire a usable session
+      for (const target of targets) target.end(202); // no fabricated JSON-RPC result
+      const control = dispatchContext.getStore();
+      // Let the genuine SDK acknowledge this validated control POST before closing.
+      // A batch that cancels itself also ends above, so it cannot retain this promise.
+      void (control?.record === record ? control.ended : Promise.resolve()).then(() => closeSession(record)).catch(cleanupFailure);
+    };
   }
   const server = httpServer(async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');
@@ -77,41 +150,43 @@ export async function startCloud({ projectRoot, host = '127.0.0.1', port = 8787,
       if (closing) return json(res, 503, 'Server is shutting down.');
       if (!['POST', 'DELETE'].includes(req.method)) { res.setHeader('Allow', 'POST, DELETE'); return json(res, 405, 'Use MCP POST or DELETE.'); }
       if (inflight >= MAX_INFLIGHT) return json(res, 429, 'Request capacity reached.');
-      inflight++;
-      try {
-        const sessionId = req.headers['mcp-session-id'];
-        if (sessionId !== undefined && (typeof sessionId !== 'string' || sessionId.length > 128)) return json(res, 400, 'Invalid session.');
-        let record = sessionId ? sessions.get(sessionId) : null;
-        if (sessionId && !record) return json(res, 404, 'Session expired or unknown; initialize again.');
-        if (record && record.actor !== actor) return json(res, 403, 'Session belongs to another actor.');
-        const parsed = req.method === 'POST' ? await body(req, res) : undefined;
-        if (req.method === 'POST' && parsed === null) return;
-        if (closing || record?.closed) return json(res, 503, 'Server is shutting down.');
-        if (!record) {
-          if (req.method !== 'POST' || !isInitializeRequest(parsed)) return json(res, 400, 'Initialize an MCP session first.');
-          if (records.size >= MAX_SESSIONS) return json(res, 429, 'Session capacity reached.');
-          const store = new Store(projectRoot, actor);
-          const mcp = createServer(store);
-          const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID(), enableJsonResponse: true, maxRequestBodySize: MAX_BODY });
-          record = { actor, store, mcp, transport, updatedAt: Date.now(), busy: 0, closed: false };
-          records.add(record);
-          try { await mcp.connect(transport); }
-          catch (error) { records.delete(record); store.close(); throw error; }
-          mcp.server.onclose = () => { void closeSession(record); };
-          if (closing || record.closed) { await closeSession(record); return json(res, 503, 'Server is shutting down.'); }
-          record.busy++;
-          try {
-            await transport.handleRequest(req, res, parsed);
-            if (!record.closed && transport.sessionId) sessions.set(transport.sessionId, record);
-            else await closeSession(record);
-          } catch (error) { await closeSession(record); throw error; }
-          finally { record.busy--; }
-        } else {
-          record.updatedAt = Date.now(); record.busy++;
-          try { await record.transport.handleRequest(req, res, parsed); }
-          finally { record.busy--; if (req.method === 'DELETE') await closeSession(record); }
-        }
-      } finally { inflight--; }
+      const exchange = beginExchange(req, res);
+      const sessionId = req.headers['mcp-session-id'];
+      if (sessionId !== undefined && (typeof sessionId !== 'string' || sessionId.length > 128)) return json(res, 400, 'Invalid session.');
+      let record = sessionId ? sessions.get(sessionId) : null;
+      if (sessionId && !record) return json(res, 404, 'Session expired or unknown; initialize again.');
+      if (record && record.actor !== actor) return json(res, 403, 'Session belongs to another actor.');
+      const parsed = req.method === 'POST' ? await body(req, res) : undefined;
+      if (req.method === 'POST' && parsed === null) return;
+      if (exchange.settled) return;
+      if (closing || record?.closed) return json(res, 503, 'Server is shutting down.');
+      if (!record) {
+        if (req.method !== 'POST' || !isInitializeRequest(parsed)) return json(res, 400, 'Initialize an MCP session first.');
+        if (records.size >= MAX_SESSIONS) return json(res, 429, 'Session capacity reached.');
+        const store = new Store(projectRoot, actor);
+        const mcp = createServer(store);
+        const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => randomUUID(), enableJsonResponse: true, maxRequestBodySize: MAX_BODY });
+        record = { actor, store, mcp, transport, updatedAt: Date.now(), busy: 0, closed: false, exchanges: new Set(), requests: new Map() };
+        records.add(record);
+        try { await mcp.connect(transport); }
+        catch (error) { records.delete(record); store.close(); throw error; }
+        ownCancellation(record);
+        mcp.server.onclose = () => {
+          const current = dispatchContext.getStore();
+          // DELETE must keep its own genuine SDK response while other calls close.
+          void closeSession(record, current?.record === record && current.method === 'DELETE' ? current : null).catch(cleanupFailure);
+        };
+        if (closing || record.closed) { await closeSession(record); return json(res, 503, 'Server is shutting down.'); }
+        try {
+          await dispatch(record, exchange, req, res, parsed);
+          if (!record.closed && transport.sessionId) sessions.set(transport.sessionId, record);
+          else await closeSession(record);
+        } catch (error) { await closeSession(record); throw error; }
+      } else {
+        record.updatedAt = Date.now();
+        try { await dispatch(record, exchange, req, res, parsed); }
+        finally { if (req.method === 'DELETE') await closeSession(record, exchange); }
+      }
     } catch { json(res, 500, 'Request failed; retain state and review server health.'); }
   });
   server.requestTimeout = 30000;
@@ -120,7 +195,7 @@ export async function startCloud({ projectRoot, host = '127.0.0.1', port = 8787,
   server.keepAliveTimeout = 5000;
   const sweep = setInterval(() => {
     const now = Date.now();
-    for (const record of sessions.values()) if (!record.busy && now - record.updatedAt >= IDLE_MS) void closeSession(record);
+    for (const record of sessions.values()) if (!record.busy && now - record.updatedAt >= IDLE_MS) void closeSession(record).catch(cleanupFailure);
   }, 60000).unref();
   let shutdown;
   const close = () => {
@@ -130,7 +205,7 @@ export async function startCloud({ projectRoot, host = '127.0.0.1', port = 8787,
     if (signalHandlers) { process.removeListener('SIGINT', onSignal); process.removeListener('SIGTERM', onSignal); }
     shutdown = (async () => {
       // Abort active waits through the MCP transport before closing their DB connection.
-      await Promise.allSettled([...records].map(closeSession));
+      await Promise.allSettled([...records].map(record => closeSession(record)));
       await new Promise(resolve => { server.close(resolve); server.closeAllConnections(); });
     })();
     return shutdown;

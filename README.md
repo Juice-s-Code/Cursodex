@@ -4,11 +4,13 @@ Cursodex is an open-source MCP bridge that lets active Codex and Cursor sessions
 
 ## Get started
 
-Use Node.js 22.13 or later within Node 22, or Node 24, with npm available. Open a terminal in the project both hosts will use, then run:
+Use Node.js 22.13 or later within Node 22, or Node 24, with npm available. The versioned release package installs without Git. Open a terminal in the project both hosts will use, then run:
 
 ~~~sh
-npx --yes --package=github:Juice-s-Code/Cursodex cursodex setup --project "$PWD"
+npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.1.5/cursodex-mcp-0.1.5.tgz cursodex setup --project "$PWD"
 ~~~
+
+On Windows PowerShell, pass `$PWD.Path` instead of `"$PWD"`; on Command Prompt, pass `"%CD%"`. See [Getting started](docs/GETTING_STARTED.md) for complete copyable commands and upgrades.
 
 Setup creates project-local MCP entries for Codex and Cursor and a durable runtime snapshot under .cursodex/runtime. The generated entries use an absolute Node executable and the snapshot, so hosts do not depend on a temporary npx cache. Existing unrelated MCP entries are preserved. Changed configuration files receive backups; conflicting cursodex entries require an explicit --force choice.
 
@@ -41,7 +43,7 @@ cursodex server --agent codex --project /absolute/path/to/project
 cursodex cloud --project /absolute/path/to/state-project --host 127.0.0.1 --port 8787
 ~~~
 
-These commands are available through the package bin. For one-off use, prepend the npx --yes --package=github:Juice-s-Code/Cursodex prefix. The server command speaks MCP on stdio and is normally launched by your host; it is not a separate background service to start alongside the host entry. Use `cursodex call` to invoke the public MCP tools from a terminal or an agent whose native MCP catalogue cannot be reloaded during a running chat. Each invocation starts one bounded protocol client and closes it afterward; it does not launch an AI model. See [agent integrations](docs/AGENT_INTEGRATIONS.md) for the portable skill and Codex plugin.
+These commands are available through the package bin. For one-off use, prepend the npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.1.5/cursodex-mcp-0.1.5.tgz prefix. The server command speaks MCP on stdio and is normally launched by your host; it is not a separate background service to start alongside the host entry. Use `cursodex call` to invoke the public MCP tools from a terminal or an agent whose native MCP catalogue cannot be reloaded during a running chat. Each invocation starts one bounded protocol client and closes it afterward; it does not launch an AI model. See [agent integrations](docs/AGENT_INTEGRATIONS.md) for the portable skill and Codex plugin.
 
 ## Cloud mode
 
@@ -57,8 +59,8 @@ Read [the trust contract](docs/TRUST.md), [security guidance](SECURITY.md) and [
 
 ## Validation and license
 
-The v0.1.0 local validation passed 39 focused Node tests on macOS with Node22.23.2, including real stdio and loopback HTTP SDK clients, concurrent SQLite startup, CAS races, UTF-8 boundaries, HTTP actor/session fencing, shutdown and installer preservation. A packed npm consumer installation also proved that both generated stdio entries and the cloud module run after the original npm installation is removed. These are protocol/runtime tests, not proof that your actual AI sessions loaded MCP.
+The test suite uses actual stdio and authenticated HTTP SDK clients to cover messages, acknowledgements, shared-note/task revisions, ownership, cancellation, reconnect and installer preservation. Distribution checks install the packed release in a clean consumer project and verify its durable runtime after the original installation is removed. CI receipts and immutable release assets are published with each verified release; authored tests and a setup receipt are separate from actual AI-host loading.
 
-CI is configured for Node22/24 on Linux, macOS and Windows. Container, external HTTPS and host integration acceptance depend on those actual environments; no managed cloud service is included. See the [changelog](CHANGELOG.md) and [evaluation fixtures](evaluations/README.md).
+CI targets Node22/24 on Linux, macOS and Windows, with clean-package consumer verification and a Linux container smoke workflow. The container check verifies the packaged cloud service; an external HTTPS deployment and your actual AI-host connection still need their own acceptance. No managed cloud service is included. See the [changelog](CHANGELOG.md) and [evaluation fixtures](evaluations/README.md).
 
 MIT licensed. No AI subscription or API key is needed by the bridge itself; your Codex/Cursor use remains under your existing accounts.

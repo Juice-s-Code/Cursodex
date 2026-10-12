@@ -8,8 +8,8 @@ Use supported Node 22 (22.13 or later) or Node 24. Install a release containing 
 
 ~~~sh
 mkdir -p .agents/skills
-npx --yes --package=github:Juice-s-Code/Cursodex cursodex install-skill --target "$PWD/.agents/skills/cursodex" --dry-run
-npx --yes --package=github:Juice-s-Code/Cursodex cursodex install-skill --target "$PWD/.agents/skills/cursodex"
+npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.1.5/cursodex-mcp-0.1.5.tgz cursodex install-skill --target "$PWD/.agents/skills/cursodex" --dry-run
+npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.1.5/cursodex-mcp-0.1.5.tgz cursodex install-skill --target "$PWD/.agents/skills/cursodex"
 ~~~
 
 In PowerShell, use `New-Item -ItemType Directory -Force .agents/skills` and pass `"$($PWD.Path)/.agents/skills/cursodex"` as the target. The absolute target is the final skill folder, and its parent must exist. A byte-identical repeated install succeeds; conflicting or extra files are retained and refused. There is no overwrite flag, automatic upgrade, dependency install, or global/config modification. A dry run makes no installer writes; npx can still fetch its package into its own cache.

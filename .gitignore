@@ -14,3 +14,6 @@ coverage/
 
 # Local Obsidian UI state created when opening the source folder.
 .obsidian/
+
+# Local verification output is evidence, not distribution source.
+verification-receipts/

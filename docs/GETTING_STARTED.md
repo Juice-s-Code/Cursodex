@@ -2,7 +2,7 @@
 
 ## Requirements
 
-Use Node.js 22.13 or later within Node 22, or Node 24, with npm/npx available. For local stdio mode, both hosts run on the same computer and use the same existing local project directory/store. Cloud mode below lets hosts connect to one authenticated shared endpoint. SQLite always stays on a local filesystem at the server; it is not shared through a network filesystem.
+Use Node.js 22.13 or later within Node 22, or Node 24, with npm/npx available. The versioned release `.tgz` does not require Git. For local stdio mode, both hosts run on the same computer and use the same existing local project directory/store. Cloud mode below lets hosts connect to one authenticated shared endpoint. SQLite always stays on a local filesystem at the server; it is not shared through a network filesystem.
 
 The package runs JavaScript ESM directly with Node's built-in SQLite; no compiler or separately installed database is required. Experimental SQLite diagnostics, where present, go to stderr rather than MCP stdout.
 
@@ -11,13 +11,19 @@ The package runs JavaScript ESM directly with Node's built-in SQLite; no compile
 Open a terminal in the project you want both hosts to work on. In a POSIX shell:
 
 ~~~sh
-npx --yes --package=github:Juice-s-Code/Cursodex cursodex setup --project "$PWD"
+npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.1.5/cursodex-mcp-0.1.5.tgz cursodex setup --project "$PWD"
 ~~~
 
 In PowerShell:
 
 ~~~powershell
-npx --yes --package=github:Juice-s-Code/Cursodex cursodex setup --project $PWD.Path
+npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.1.5/cursodex-mcp-0.1.5.tgz cursodex setup --project $PWD.Path
+~~~
+
+In Windows Command Prompt:
+
+~~~bat
+npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.1.5/cursodex-mcp-0.1.5.tgz cursodex setup --project "%CD%"
 ~~~
 
 Setup's default configuration destinations are:
@@ -30,10 +36,23 @@ Both entries point to the same resolved project and a durable runtime snapshot i
 To preview setup without changing project files:
 
 ~~~sh
-npx --yes --package=github:Juice-s-Code/Cursodex cursodex setup --project "$PWD" --dry-run
+npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.1.5/cursodex-mcp-0.1.5.tgz cursodex setup --project "$PWD" --dry-run
 ~~~
 
 The setup dry run makes no project/configuration changes. npx may still fetch the package into its own cache before running the CLI.
+
+## Upgrade an existing project
+
+An upgrade creates a new immutable runtime snapshot and replaces only the two `cursodex` host entries. Existing messages, tasks, notes and unrelated MCP entries remain in the project. Preview the intentional entry replacement first:
+
+~~~sh
+npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.1.5/cursodex-mcp-0.1.5.tgz cursodex setup --project "$PWD" --force --dry-run
+npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.1.5/cursodex-mcp-0.1.5.tgz cursodex setup --project "$PWD" --force
+~~~
+
+Use `$PWD.Path` in PowerShell or `"%CD%"` in Command Prompt. Inspect the preview and retained configuration backups. Then reload both actual hosts through their supported lifecycle, call `cursodex_status`, and verify `data.runtime.package_version` is `0.1.5`, the roles are correct and both use the same project. Repeat the unique challenge/reply/ACK acceptance below after a host/session change. A successful installer or terminal SDK check cannot hot-reload an already running AI session. Old snapshots remain available for deliberate recovery.
+
+For development from the moving repository branch, `npx --yes --package=github:Juice-s-Code/Cursodex ...` is also available; that Git-based form requires Git to be installed. Prefer the versioned release package for reproducible installation.
 
 ## Preserve existing configuration
 
@@ -42,7 +61,7 @@ Setup validates existing TOML/JSON, refuses configuration symlinks and nonfiles,
 A conflicting existing cursodex entry is refused. Review that entry first; --force permits replacement of only the conflicting cursodex entries and still preserves other MCP entries:
 
 ~~~sh
-npx --yes --package=github:Juice-s-Code/Cursodex cursodex setup --project "$PWD" --force
+npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.1.5/cursodex-mcp-0.1.5.tgz cursodex setup --project "$PWD" --force
 ~~~
 
 Codex replacement supports the standard [mcp_servers.cursodex] TOML table form. An existing inline/dotted cursodex definition may be refused even with --force because it cannot be safely replaced. Review and convert that specific entry deliberately; do not overwrite the full config to bypass the refusal.
@@ -171,6 +190,6 @@ From the Cursodex checkout with its dependencies installed, run:
 node cli/client.mjs /absolute/path/to/request.json
 ~~~
 
-The client accepts at most twenty calls and a 1–60-second runtime deadline, then performs finite transport cleanup. Its deadline begins after synchronous local request-file parsing. Accepted request payloads are at most 65,536 bytes; keep the local file trusted and small because it is read before that check. It stops on an error and prints a receipt. Earlier successful mutations may already be committed; a sequence of calls is not one atomic batch. Retry message/create/acquire requests with their original exact keys, and reread a task after an uncertain revision update.
+The client accepts at most twenty calls and a 1–60-second runtime deadline, then performs finite transport cleanup. Its deadline begins after synchronous local request-file parsing. Accepted request payloads are at most 65,536 bytes; the client bounds the local file before parsing it. Keep the request file trusted and small. It stops on an error and prints a receipt. Earlier successful mutations may already be committed; a sequence of calls is not one atomic batch. Retry message/create/acquire requests with their original exact keys, and reread a task after an uncertain revision update.
 
 A terminal client can verify the server and store while host integration is unresolved. It does not prove Cursor or Codex loaded MCP, or that a particular project's native/runtime work succeeded.

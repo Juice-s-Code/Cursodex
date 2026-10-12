@@ -22,3 +22,34 @@ jobs:
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm test
       - run: npm pack --dry-run
+      - name: Verify packed clean consumer and durable runtime
+        run: npm run verify:package
+      - name: Pack verified release asset
+        run: npm pack --ignore-scripts --pack-destination verification-receipts
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: package-proof-${{ matrix.os }}-node${{ matrix.node }}
+          path: |
+            verification-receipts/package.json
+            verification-receipts/*.tgz
+          if-no-files-found: warn
+  container:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify actual container, authenticated exchange and restart persistence
+        run: npm run verify:container
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: container-proof-ubuntu-node22
+          path: verification-receipts/container.json
+          if-no-files-found: warn

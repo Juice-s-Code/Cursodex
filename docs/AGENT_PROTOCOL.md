@@ -29,6 +29,10 @@ Use a task for the bounded objective and its current revision. Use a fresh exact
 
 Acquire the appropriate advisory claims before authorized edits, retain the owner ID/token and renew while active. Recheck source identity before publication. Claims do not override project/user/resource gates or lock external programs. lane:native is a coordination symbol for the configured codex actor, not build permission.
 
+Freeze the artifact and release its claim while it is still active before slow reporting or reply tails. If additional source writes become necessary, reacquire or renew active ownership first. An expired claim is not an explicit release. Listing pages accept at most ten rows; follow `next_cursor` instead of increasing the limit. `cursodex_update_task` requires the task's current summary as well as its revision.
+
+CLI call sequences are not atomic batches. If an earlier write commits and a later call fails validation or times out, read the retained rows and resume only the failed or subsequent operations. Do not replay a successful memory CAS with its old revision.
+
 A shared current-handoff note can summarize stable context for the next session; a directed message provides delivery/acknowledgement. Neither mechanism automatically resumes an idle host. During an active task, use list_events or a bounded wait_events call when useful; do not build a permanent poller merely to manufacture constant communication.
 
 ## Copyable local prompt flows

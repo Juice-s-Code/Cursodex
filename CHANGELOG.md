@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.5 — 2026-10-12
+
+- Settle interrupted cloud requests and retire cancelled/disconnected sessions so abandoned exchanges cannot hold capacity indefinitely; retain durable state and explicit reconnect semantics.
+- Use immutable GitHub release packages for Node/npm-only setup and explicit upgrades; document Windows shells and actual-host version readback.
+- Preserve production dependency resolution in the distributed shrinkwrap and include Docker/Compose deployment files in the package.
+- Verify clean-package consumers across the Node22/24 platform matrix and the cloud container lifecycle through CI.
+- Refine active claim release, pagination and partial-batch recovery guidance from actual collaboration receipts.
+
 ## 0.1.4 — 2026-10-12
 
 - Extract strict tool registration into an internal module while retaining all 17 public tools, schemas, envelopes, role boundaries and per-server wait state.

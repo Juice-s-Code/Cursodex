@@ -1,6 +1,6 @@
 {
   "name": "cursodex-mcp",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A durable, bounded MCP coordination bridge for Codex and Cursor",
   "type": "module",
   "license": "MIT",
@@ -22,7 +22,6 @@
     "bin/",
     "src/",
     "cli/",
-    "templates/",
     "README.md",
     "LICENSE",
     "docs/",
@@ -32,11 +31,18 @@
     "CONTRIBUTING.md",
     "skills/",
     ".codex-plugin/",
-    "evals/"
+    "evals/",
+    "Dockerfile",
+    "compose.yaml",
+    ".dockerignore",
+    ".env.example",
+    "scripts/"
   ],
   "scripts": {
     "start": "node src/index.js",
-    "test": "node --test --test-concurrency=1 test/*.test.js"
+    "test": "node --test --test-concurrency=1 test/*.test.js",
+    "verify:package": "node scripts/verify-package.mjs",
+    "verify:container": "node scripts/verify-container.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.1",
