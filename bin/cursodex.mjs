@@ -178,7 +178,9 @@ async function runtimePlan(root) {
   for (const dir of [...nodes.keys()].sort()) {
     const relative = path.join('tree', path.relative(base, dir));
     if (dir === root) {
-      for (const name of ['package.json', 'src', 'bin']) await collect(path.join(dir, name), path.join(relative, name));
+      for (const name of ['package.json', 'src', 'bin', 'cli', 'skills']) {
+        if (await optionalStat(path.join(dir, name))) await collect(path.join(dir, name), path.join(relative, name));
+      }
     } else await collect(dir, relative);
   }
   files.sort((a, b) => a.relative.localeCompare(b.relative));
@@ -286,6 +288,9 @@ const HELP = 'Cursodex — local Codex/Cursor coordination over MCP stdio\n\n' +
   'cursodex setup --project ABS [--codex-config ABS] [--cursor-config ABS] [--dry-run] [--force]\n' +
   'cursodex server --agent codex|cursor --project ABS\n' +
   'cursodex cloud --project ABS [--host HOST] [--port PORT]\n' +
+  'cursodex call --agent codex|cursor --project ABS --tool NAME [--arguments-file ABS | --arguments JSON] [--deadline-ms MS]\n' +
+  'cursodex call --request ABS\n' +
+  'cursodex install-skill --target ABS [--dry-run]\n' +
   'cursodex --help | --version\n\n' +
   'Setup validates and merges both project configs, backs up changed originals and snapshots\n' +
   'installed production dependencies into PROJECT/.cursodex/runtime. No install, authentication,\n' +
@@ -297,6 +302,8 @@ export async function main(argv = process.argv.slice(2)) {
     process.stdout.write(JSON.parse(await fs.readFile(path.join(packageRoot, 'package.json'), 'utf8')).version + '\n'); return;
   }
   const [command, ...args] = argv;
+  if (command === 'call') { const { main: call } = await import('../cli/call.mjs'); await call(args); return; }
+  if (command === 'install-skill') { const { main: install } = await import('../cli/skill.mjs'); await install(args); return; }
   if (!['setup', 'server', 'cloud'].includes(command)) die('Unknown command. Use cursodex --help.');
   const options = {}, accepted = command === 'server' ? ['--project', '--agent'] : command === 'cloud' ? ['--project', '--host', '--port'] : ['--project', '--codex-config', '--cursor-config', '--dry-run', '--force'];
   for (let i = 0; i < args.length; i++) {

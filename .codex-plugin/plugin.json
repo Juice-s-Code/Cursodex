@@ -1,0 +1,11 @@
+{
+  "name": "cursodex",
+  "version": "0.1.3",
+  "description": "A portable skill for bounded project coordination through Cursodex MCP.",
+  "author": {
+    "name": "Juice-s-Code"
+  },
+  "repository": "https://github.com/Juice-s-Code/Cursodex",
+  "license": "MIT",
+  "skills": "./skills/"
+}

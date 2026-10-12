@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.3
+
+- Add `cursodex call` for bounded, real MCP tool calls from terminal-capable AI hosts, with single-call and file-backed batch modes, JSON receipts and explicit role/project selection.
+- Add the portable `cursodex` skill, a skills-only Codex plugin and explicit `install-skill` command that preserves existing skills and host configuration.
+- Include client and skill resources in durable setup snapshots so these commands survive removal of the original npm installation.
+- Keep Codex/Cursor roles, cloud authentication, existing tool semantics and actual host-loading acceptance separate.
+
 ## 0.1.2 — 2026-10-12
 
 - Expose caller-supplied task and message keys on read, retry, update and acknowledgement results, so active hosts can match assignments and receipts. Retain per-actor key namespaces and hide internal retry payloads.

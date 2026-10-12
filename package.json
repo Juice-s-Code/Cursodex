@@ -1,6 +1,6 @@
 {
   "name": "cursodex-mcp",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "A durable, bounded MCP coordination bridge for Codex and Cursor",
   "type": "module",
   "license": "MIT",
@@ -29,7 +29,10 @@
     "evaluations/",
     "CHANGELOG.md",
     "SECURITY.md",
-    "CONTRIBUTING.md"
+    "CONTRIBUTING.md",
+    "skills/",
+    ".codex-plugin/",
+    "evals/"
   ],
   "scripts": {
     "start": "node src/index.js",

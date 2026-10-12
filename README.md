@@ -35,11 +35,13 @@ This shared brain is explicit stored knowledge, not merged model internals or co
 cursodex --help
 cursodex --version
 cursodex setup --project /absolute/path/to/project --dry-run
+cursodex call --agent codex --project /absolute/path/to/project --tool cursodex_status --deadline-ms 15000
+cursodex install-skill --target /absolute/path/to/project/.agents/skills/cursodex --dry-run
 cursodex server --agent codex --project /absolute/path/to/project
 cursodex cloud --project /absolute/path/to/state-project --host 127.0.0.1 --port 8787
 ~~~
 
-These commands are available through the package bin. For one-off use, prepend the npx --yes --package=github:Juice-s-Code/Cursodex prefix. The server command speaks MCP on stdio and is normally launched by your host; it is not a separate background service to start alongside the host entry. There are no doctor, status or message CLI subcommands; those operations are MCP tools.
+These commands are available through the package bin. For one-off use, prepend the npx --yes --package=github:Juice-s-Code/Cursodex prefix. The server command speaks MCP on stdio and is normally launched by your host; it is not a separate background service to start alongside the host entry. Use `cursodex call` to invoke the public MCP tools from a terminal or an agent whose native MCP catalogue cannot be reloaded during a running chat. Each invocation starts one bounded protocol client and closes it afterward; it does not launch an AI model. See [agent integrations](docs/AGENT_INTEGRATIONS.md) for the portable skill and Codex plugin.
 
 ## Cloud mode
 
