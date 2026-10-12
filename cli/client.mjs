@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { PACKAGE_VERSION } from '../src/runtime.js';
 
 export const MAX_REQUEST_BYTES = 65536;
 const publicTools = new Set([
@@ -99,7 +100,7 @@ export async function runRequest(input) {
     if (stderrBytes < 65536) process.stderr.write(chunk.subarray(0, 65536 - stderrBytes));
     stderrBytes += chunk.length;
   });
-  const client = new Client({ name: 'cursodex-bounded-client', version: '0.1.0' });
+  const client = new Client({ name: 'cursodex-bounded-client', version: PACKAGE_VERSION });
   const receipt = { actor: request.actor, projectRoot: request.projectRoot, startedAt: new Date().toISOString(), results: [] };
   const abort = new AbortController();
   let expired = false, deadline, exitCode = 0;
@@ -114,6 +115,7 @@ export async function runRequest(input) {
     await Promise.race([expiry, (async () => {
       await client.connect(transport, { timeout: 10000, signal: abort.signal });
       if (expired) return;
+      receipt.serverVersion = client.getServerVersion();
       const catalog = await client.listTools(undefined, { signal: abort.signal });
       if (expired) return;
       receipt.tools = catalog.tools.map(tool => tool.name);

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4 — 2026-10-12
+
+- Extract strict tool registration into an internal module while retaining all 17 public tools, schemas, envelopes, role boundaries and per-server wait state.
+- Report the loaded package version consistently through MCP initialization, status/context and bounded CLI server-version receipts. Runtime IDs are diagnostic, not host or authorization proof.
+- Add real SDK regressions for tool registration, independent wait state, stdio/HTTP identities, persistent reconnect and relocated metadata.
+
 ## 0.1.3
 
 - Add `cursodex call` for bounded, real MCP tool calls from terminal-capable AI hosts, with single-call and file-backed batch modes, JSON receipts and explicit role/project selection.

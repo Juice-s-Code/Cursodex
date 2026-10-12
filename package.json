@@ -1,6 +1,6 @@
 {
   "name": "cursodex-mcp",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "A durable, bounded MCP coordination bridge for Codex and Cursor",
   "type": "module",
   "license": "MIT",
