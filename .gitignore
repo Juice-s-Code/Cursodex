@@ -17,3 +17,6 @@ coverage/
 
 # Local verification output is evidence, not distribution source.
 verification-receipts/
+
+# Linked worktrees stay out of the main checkout.
+.worktrees/
