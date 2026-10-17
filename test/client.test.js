@@ -28,7 +28,7 @@ test('bounded CLI calls advertised actor status and returns its structured recei
   assert.equal(result.code, 0, result.stderr);
   const receipt = JSON.parse(result.stdout);
   assert.equal(receipt.actor, 'codex');
-  assert.equal(receipt.tools.length, 17);
+  assert.equal(receipt.tools.length, 19);
   assert.equal(receipt.results[0].result.structuredContent.data.agent, 'codex');
   assert.equal(receipt.deadlineReached, undefined);
 });
@@ -42,8 +42,8 @@ test('bounded CLI closes a waiting server and records deadline failure', { timeo
   assert.ok(result.elapsed < 7000);
 });
 test('bounded CLI rejects actor spoofing before launching a server', { timeout: 15000 }, async t => {
-  const result = await run(t, { actor: 'other' });
+  const result = await run(t, { actor: 'bad actor' });
   assert.equal(result.code, 1);
-  assert.match(result.stderr, /actor must be codex or cursor/);
+  assert.match(result.stderr, /actor must be a lowercase agent name/);
   assert.equal(result.stdout, '');
 });

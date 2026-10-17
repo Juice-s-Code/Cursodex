@@ -15,3 +15,8 @@ Use this repository's private vulnerability reporting channel if it is available
 A useful private report includes the affected commit/version, Node/OS versions, the boundary crossed, a small disposable-project reproduction, expected versus observed behavior and a redacted result. Use fictional paths/content and preserve uncertainty where a transaction may have committed. Never reproduce a report against another person's project or production store.
 
 This repository does not promise an incident response time or support lifetime. Dependency advisories, current Node support and fixes should be assessed against the version you actually run. Passing protocol tests does not certify the security of host configuration, model behavior or external tools.
+
+
+## Opt-in activity sharing
+
+Named stdio identities are trusted process configuration, not account authentication. Cloud credentials map to fixed identities; request payloads never choose their sender. Activity is append-only self-report, not proof of live processes, file ownership, source integrity or native admission. The Cursor stream/hook adapters allowlist metadata and project-relative paths, dropping command text, raw output, prompts, transcripts and hidden thoughts. Explicit `json` activity and MCP messages publish the text their caller supplies: keep secrets out. `watch` displays untrusted records without executing them or automatically acknowledging instructions. Stop a live client with Ctrl-C or its finite duration. No feature attaches to an arbitrary existing terminal, reads a transcript, starts an AI model or bypasses a host's approval controls.

@@ -159,7 +159,7 @@ test('invalid required configuration fails startup with empty stdout and no proj
   await fs.writeFile(file, 'sentinel');
   for (const overrides of [
     { PROJECT_ROOT: undefined }, { PROJECT_ROOT: 'relative-project' },
-    { PROJECT_ROOT: file }, { CURSODEX_AGENT: undefined }, { CURSODEX_AGENT: 'impersonator' }
+    { PROJECT_ROOT: file }, { CURSODEX_AGENT: undefined }, { CURSODEX_AGENT: 'invalid actor' }
   ]) {
     const p = rawChild(f, overrides);
     p.child.stdin.end();

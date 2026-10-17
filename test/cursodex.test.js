@@ -136,7 +136,7 @@ test('event pagination and bounded wait observe the other real client without dr
 
 test('tools/resources/prompts advertise modern scoped capabilities and reject actor impersonation', { timeout: 15000 }, async t => {
   const { a } = await pair(t);
-  assert.equal((await a.listTools()).tools.length, 17);
+  assert.equal((await a.listTools()).tools.length, 19);
   assert.ok((await a.listResources()).resources.some(x => x.uri === 'cursodex://protocol'));
   assert.ok((await a.listPrompts()).prompts.some(x => x.name === 'cursodex-handoff'));
   const spoof = await a.callTool({ name: 'cursodex_send_message', arguments: { sender: 'cursor', recipient: 'cursor', key: 'spoof', body: 'no' } });

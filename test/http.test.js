@@ -278,3 +278,24 @@ test('shutdown with a dispatched wait closes the real HTTP exchange within a fin
   assert.equal(rejected.value, undefined);
   assert.match(rejected.error?.message ?? '', /503|fetch failed|closed|socket/i);
 });
+
+test('three named HTTP principals exchange activity and cannot reuse another principal session', { timeout: 15000 }, async t => {
+  const root = await mkdtemp(path.join(tmpdir(), 'cursodex-named-cloud-'));
+  const tokens = { codex: 'c'.repeat(48), cursor: 'u'.repeat(48), claude: 'l'.repeat(48) };
+  const cloud = await startCloud({ projectRoot: root, port: 0, env: { CURSODEX_AGENT_TOKENS: JSON.stringify(tokens) }, log: false, signalHandlers: false });
+  const url = new URL('http://127.0.0.1:' + cloud.address.port + '/mcp'), connected = [];
+  t.after(async () => { await Promise.allSettled(connected.map(x => x.client.close())); await cloud.close(); await rm(root, { recursive: true, force: true }); });
+  for (const actor of Object.keys(tokens)) {
+    const transport = new StreamableHTTPClientTransport(url, { requestInit: { headers: { Authorization: 'Bearer ' + tokens[actor] } } });
+    const client = new Client({ name: 'named-' + actor, version: '1' }); connected.push({ client, transport });
+    await client.connect(transport); assert.equal((await call(client, 'status')).data.agent, actor);
+  }
+  const [a, b, c] = connected;
+  const activity = (await call(b.client, 'publish_activity', { key: 'cloud-work', kind: 'file', summary: 'Updated shared source.', paths: ['src/feature.js'] })).data;
+  assert.equal((await call(c.client, 'list_activity')).data.items[0].id, activity.id);
+  const message = (await call(a.client, 'send_message', { recipient: 'claude', key: 'named-review', body: 'Review the change.' })).data;
+  assert.equal((await call(b.client, 'ack_message', { id: message.id })).error.code, 'FORBIDDEN');
+  assert.equal((await call(c.client, 'ack_message', { id: message.id })).ok, true);
+  const cross = await fetch(url, { method: 'POST', headers: { Authorization: 'Bearer ' + tokens.claude, 'mcp-session-id': a.transport.sessionId, 'Content-Type': 'application/json' }, body: '{}' });
+  assert.equal(cross.status, 403);
+});

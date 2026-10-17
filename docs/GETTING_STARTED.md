@@ -11,19 +11,19 @@ The package runs JavaScript ESM directly with Node's built-in SQLite; no compile
 Open a terminal in the project you want both hosts to work on. In a POSIX shell:
 
 ~~~sh
-npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.1.5/cursodex-mcp-0.1.5.tgz cursodex setup --project "$PWD"
+npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.2.0/cursodex-mcp-0.2.0.tgz cursodex setup --project "$PWD"
 ~~~
 
 In PowerShell:
 
 ~~~powershell
-npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.1.5/cursodex-mcp-0.1.5.tgz cursodex setup --project $PWD.Path
+npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.2.0/cursodex-mcp-0.2.0.tgz cursodex setup --project $PWD.Path
 ~~~
 
 In Windows Command Prompt:
 
 ~~~bat
-npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.1.5/cursodex-mcp-0.1.5.tgz cursodex setup --project "%CD%"
+npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.2.0/cursodex-mcp-0.2.0.tgz cursodex setup --project "%CD%"
 ~~~
 
 Setup's default configuration destinations are:
@@ -36,7 +36,7 @@ Both entries point to the same resolved project and a durable runtime snapshot i
 To preview setup without changing project files:
 
 ~~~sh
-npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.1.5/cursodex-mcp-0.1.5.tgz cursodex setup --project "$PWD" --dry-run
+npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.2.0/cursodex-mcp-0.2.0.tgz cursodex setup --project "$PWD" --dry-run
 ~~~
 
 The setup dry run makes no project/configuration changes. npx may still fetch the package into its own cache before running the CLI.
@@ -46,11 +46,11 @@ The setup dry run makes no project/configuration changes. npx may still fetch th
 An upgrade creates a new immutable runtime snapshot and replaces only the two `cursodex` host entries. Existing messages, tasks, notes and unrelated MCP entries remain in the project. Preview the intentional entry replacement first:
 
 ~~~sh
-npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.1.5/cursodex-mcp-0.1.5.tgz cursodex setup --project "$PWD" --force --dry-run
-npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.1.5/cursodex-mcp-0.1.5.tgz cursodex setup --project "$PWD" --force
+npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.2.0/cursodex-mcp-0.2.0.tgz cursodex setup --project "$PWD" --force --dry-run
+npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.2.0/cursodex-mcp-0.2.0.tgz cursodex setup --project "$PWD" --force
 ~~~
 
-Use `$PWD.Path` in PowerShell or `"%CD%"` in Command Prompt. Inspect the preview and retained configuration backups. Then reload both actual hosts through their supported lifecycle, call `cursodex_status`, and verify `data.runtime.package_version` is `0.1.5`, the roles are correct and both use the same project. Repeat the unique challenge/reply/ACK acceptance below after a host/session change. A successful installer or terminal SDK check cannot hot-reload an already running AI session. Old snapshots remain available for deliberate recovery.
+Use `$PWD.Path` in PowerShell or `"%CD%"` in Command Prompt. Inspect the preview and retained configuration backups. Then reload both actual hosts through their supported lifecycle, call `cursodex_status`, and verify `data.runtime.package_version` is `0.2.0`, the roles are correct and both use the same project. Repeat the unique challenge/reply/ACK acceptance below after a host/session change. A successful installer or terminal SDK check cannot hot-reload an already running AI session. Old snapshots remain available for deliberate recovery.
 
 For development from the moving repository branch, `npx --yes --package=github:Juice-s-Code/Cursodex ...` is also available; that Git-based form requires Git to be installed. Prefer the versioned release package for reproducible installation.
 
@@ -61,7 +61,7 @@ Setup validates existing TOML/JSON, refuses configuration symlinks and nonfiles,
 A conflicting existing cursodex entry is refused. Review that entry first; --force permits replacement of only the conflicting cursodex entries and still preserves other MCP entries:
 
 ~~~sh
-npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.1.5/cursodex-mcp-0.1.5.tgz cursodex setup --project "$PWD" --force
+npx --yes --package=https://github.com/Juice-s-Code/Cursodex/releases/download/v0.2.0/cursodex-mcp-0.2.0.tgz cursodex setup --project "$PWD" --force
 ~~~
 
 Codex replacement supports the standard [mcp_servers.cursodex] TOML table form. An existing inline/dotted cursodex definition may be refused even with --force because it cannot be safely replaced. Review and convert that specific entry deliberately; do not overwrite the full config to bypass the refusal.
@@ -118,7 +118,7 @@ Use cursodex_put_memory with name, expected_revision, body and optional evidence
 
 If another actor wins the revision, reread the note, reconcile the visible facts and retry against the new revision. Do not erase the other actor's contribution or blindly resend a stale write. After an uncertain write response, get the retained note before retrying. Keep larger artifacts outside the bounded note and record a concise reference/evidence summary.
 
-The memory table is an additive schema1 change. Existing project records retain their identity; a newer server is needed before these three tools are available. Reload both hosts after upgrading and confirm seventeen advertised tools. Do not infer that an already running child has the updated interface.
+The memory table is an additive schema1 change. Existing project records retain their identity; a newer server is needed before these three tools are available. Reload both hosts after upgrading and confirm the current advertised tool catalogue (19 tools in version0.2). Do not infer that an already running child has the updated interface.
 
 Follow [the portable active-session protocol](AGENT_PROTOCOL.md). Its example note names are conventions, not automatically created records or instructions with higher priority than the user. Shared memory never conveys hidden internal reasoning or automatically resumes an idle session.
 
@@ -193,3 +193,8 @@ node cli/client.mjs /absolute/path/to/request.json
 The client accepts at most twenty calls and a 1–60-second runtime deadline, then performs finite transport cleanup. Its deadline begins after synchronous local request-file parsing. Accepted request payloads are at most 65,536 bytes; the client bounds the local file before parsing it. Keep the request file trusted and small. It stops on an error and prints a receipt. Earlier successful mutations may already be committed; a sequence of calls is not one atomic batch. Retry message/create/acquire requests with their original exact keys, and reread a task after an uncertain revision update.
 
 A terminal client can verify the server and store while host integration is unresolved. It does not prove Cursor or Codex loaded MCP, or that a particular project's native/runtime work succeeded.
+
+
+## Named agents and live work activity (0.2.0)
+
+`--agent` accepts distinct lowercase names such as `claude` or `research-1`; identity is fixed when the stdio server starts. For cloud use, `CURSODEX_AGENT_TOKENS` is a JSON object mapping 2–64 agent names to distinct 32–512 byte non-space ASCII credentials. The existing `CURSODEX_CODEX_TOKEN` and `CURSODEX_CURSOR_TOKEN` pair remains supported when that map is absent. Never put a credential in a tool argument, shared note or terminal feed. See [Live collaboration](LIVE_COLLABORATION.md) for the 19-tool protocol, finite `watch`, opt-in Cursor stream/hook connectors and their acceptance boundaries.

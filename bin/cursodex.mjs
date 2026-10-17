@@ -5,6 +5,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { parse as parseTOML } from 'smol-toml';
+import { isValidActorSlug } from '../src/identity.js';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MAX_CONFIG = 262144;
@@ -286,10 +287,12 @@ export async function setup(options, sourceRoot = packageRoot) {
 }
 const HELP = 'Cursodex — local Codex/Cursor coordination over MCP stdio\n\n' +
   'cursodex setup --project ABS [--codex-config ABS] [--cursor-config ABS] [--dry-run] [--force]\n' +
-  'cursodex server --agent codex|cursor --project ABS\n' +
+  'cursodex server --agent NAME --project ABS\n' +
   'cursodex cloud --project ABS [--host HOST] [--port PORT]\n' +
-  'cursodex call --agent codex|cursor --project ABS --tool NAME [--arguments-file ABS | --arguments JSON] [--deadline-ms MS]\n' +
+  'cursodex call --agent NAME --project ABS --tool NAME [--arguments-file ABS | --arguments JSON] [--deadline-ms MS]\n' +
   'cursodex call --request ABS\n' +
+  'cursodex watch --agent NAME --project ABS [--after ID] [--duration-ms MS]\n' +
+  'cursodex bridge --agent NAME --project ABS --source cursor-stream|cursor-hook|json [--duration-ms MS]\n' +
   'cursodex install-skill --target ABS [--dry-run]\n' +
   'cursodex --help | --version\n\n' +
   'Setup validates and merges both project configs, backs up changed originals and snapshots\n' +
@@ -303,6 +306,7 @@ export async function main(argv = process.argv.slice(2)) {
   }
   const [command, ...args] = argv;
   if (command === 'call') { const { main: call } = await import('../cli/call.mjs'); await call(args); return; }
+  if (command === 'watch' || command === 'bridge') { const { main: live } = await import('../cli/live.mjs'); await live(command, args); return; }
   if (command === 'install-skill') { const { main: install } = await import('../cli/skill.mjs'); await install(args); return; }
   if (!['setup', 'server', 'cloud'].includes(command)) die('Unknown command. Use cursodex --help.');
   const options = {}, accepted = command === 'server' ? ['--project', '--agent'] : command === 'cloud' ? ['--project', '--host', '--port'] : ['--project', '--codex-config', '--cursor-config', '--dry-run', '--force'];
@@ -324,7 +328,7 @@ export async function main(argv = process.argv.slice(2)) {
     await startCloud({ projectRoot: options.project, host: options.host ?? '127.0.0.1', port });
     return;
   }
-  if (!['codex', 'cursor'].includes(options.agent)) die('--agent must be codex or cursor.');
+  if (!isValidActorSlug(options.agent)) die('--agent must be a lowercase agent name (1–64 letters, digits, underscores or hyphens; start with a letter).');
   await safePath(options.project, 'directory');
   process.env.PROJECT_ROOT = options.project;
   process.env.CURSODEX_AGENT = options.agent;

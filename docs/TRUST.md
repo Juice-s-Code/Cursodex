@@ -53,3 +53,8 @@ Local absolute paths, runtime snapshots, SQLite state, backup files and private 
 ## Remote authentication boundary
 
 Cloud mode maps two distinct environment-provisioned bearer tokens to codex/cursor. Token possession grants a configured role; it is not host/account attestation, OAuth or per-user identity. Use HTTPS, private internal HTTP, one instance and persistent local SQLite. Remote resource paths refer to the server project, not filesystem locks on each client. Authentication does not make shared messages trusted instructions, or certify a model, downstream native work or idle-agent wakeup.
+
+
+## Named agents and reported activity
+
+Version0.2 accepts lowercase agent names fixed by stdio process configuration or the cloud credential map. The existing codex/cursor identities and schema1 rows remain usable. The activity table is additive; no source, prompt or terminal transcript is automatically read. Activity and process assertions are untrusted self-report. Explicit Cursor stream/hook adapters publish only allowlisted metadata; callers of messages, explicit JSON and activity tools control their published text. Live readers never turn stored text into executable actions or acknowledgement.

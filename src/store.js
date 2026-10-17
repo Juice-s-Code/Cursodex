@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync, realpathSync, lstatSync, chmodSync, openSync, closeSync } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import { isValidActorSlug } from './identity.js';
 
 export const LIMITS = Object.freeze({ text: 4096, evidence: 2048, response: 131072, page: 10, paths: 16, ttlMin: 1000, ttlMax: 300000 });
 export class DomainError extends Error {
@@ -17,7 +18,6 @@ export function integer(n, min, max, label) {
   if (!Number.isSafeInteger(n) || n < min || n > max) fail('INVALID_INPUT', label + ' is out of range.');
   return n;
 }
-const actorOK = a => a === 'codex' || a === 'cursor';
 const overlap = (a, b) => a === b || (a.startsWith('path:') && b.startsWith('path:') && (a.startsWith(b + '/') || b.startsWith(a + '/')));
 const keyOK = k => { bounded(k, 128, 'key', false); if (!/^[A-Za-z0-9._:-]+$/.test(k)) fail('INVALID_INPUT', 'Use an ASCII idempotency key.'); return k; };
 function bootstrap(fn) {
@@ -34,7 +34,7 @@ function bootstrap(fn) {
 /** One connection per stdio child. Every mutation uses a short, synchronous transaction. */
 export class Store {
   constructor(projectRoot, actor, { clock = Date.now } = {}) {
-    if (!actorOK(actor)) fail('CONFIG', 'CURSODEX_AGENT must be codex or cursor.');
+    if (!isValidActorSlug(actor)) fail('CONFIG', 'CURSODEX_AGENT must be a valid lowercase actor slug.');
     if (!projectRoot || !path.isAbsolute(projectRoot)) fail('CONFIG', 'PROJECT_ROOT must be an absolute existing directory.');
     this.root = realpathSync(projectRoot);
     if (!lstatSync(this.root).isDirectory()) fail('CONFIG', 'PROJECT_ROOT must be a directory.');
@@ -68,6 +68,7 @@ export class Store {
           'CREATE TABLE IF NOT EXISTS claims (id INTEGER PRIMARY KEY AUTOINCREMENT,actor TEXT NOT NULL,idem_key TEXT NOT NULL,payload TEXT NOT NULL,resources TEXT NOT NULL,token TEXT NOT NULL,expires_at INTEGER NOT NULL,released_at INTEGER,UNIQUE(actor,idem_key));',
           'CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY AUTOINCREMENT,kind TEXT NOT NULL,actor TEXT NOT NULL,entity_id INTEGER NOT NULL,created_at INTEGER NOT NULL);',
           'CREATE TABLE IF NOT EXISTS memories (id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT UNIQUE NOT NULL,body TEXT NOT NULL,evidence TEXT NOT NULL,revision INTEGER NOT NULL,author TEXT NOT NULL,updated_at INTEGER NOT NULL);',
+          'CREATE TABLE IF NOT EXISTS activities (id INTEGER PRIMARY KEY AUTOINCREMENT,actor TEXT NOT NULL,idem_key TEXT NOT NULL,payload TEXT NOT NULL,kind TEXT NOT NULL,summary TEXT NOT NULL,paths TEXT NOT NULL,evidence TEXT NOT NULL,task_id INTEGER,process TEXT,created_at INTEGER NOT NULL,UNIQUE(actor,idem_key));',
           'CREATE INDEX IF NOT EXISTS message_recipient ON messages(recipient,id);',
           'CREATE INDEX IF NOT EXISTS message_sender ON messages(sender,id);',
           'CREATE INDEX IF NOT EXISTS active_claims ON claims(expires_at,released_at);'
@@ -113,7 +114,7 @@ export class Store {
   }
   pagination(after, limit) { integer(after, 0, Number.MAX_SAFE_INTEGER, 'after'); integer(limit, 1, LIMITS.page, 'limit'); }
   send({ recipient, key, body, evidence = '', reply_to = null }) {
-    if (!actorOK(recipient) || recipient === this.actor) fail('INVALID_RECIPIENT', 'Send to the other configured agent.');
+    if (!isValidActorSlug(recipient) || recipient === this.actor) fail('INVALID_RECIPIENT', 'Send to a different valid actor slug.');
     keyOK(key); bounded(body, LIMITS.text, 'body', false); bounded(evidence, LIMITS.evidence, 'evidence');
     const payload = JSON.stringify({ recipient, body, evidence, reply_to });
     return this.tx(() => {
@@ -151,7 +152,7 @@ export class Store {
     });
   }
   createTask({ key, assignee, title, summary = '', evidence = '' }) {
-    keyOK(key); if (!actorOK(assignee)) fail('INVALID_INPUT', 'Unknown assignee.');
+    keyOK(key); if (!isValidActorSlug(assignee)) fail('INVALID_INPUT', 'Assignee must be a valid actor slug.');
     bounded(title, 256, 'title', false); bounded(summary, LIMITS.text, 'summary'); bounded(evidence, LIMITS.evidence, 'evidence');
     const payload = JSON.stringify({ assignee, title, summary, evidence });
     return this.tx(() => {
@@ -208,6 +209,56 @@ export class Store {
   memories({ after = 0, limit = 5 }) {
     this.pagination(after, limit);
     return this.page(this.db.prepare('SELECT * FROM memories WHERE id>? ORDER BY id LIMIT ?').all(after, limit + 1), limit, after);
+  }
+  activityView(r) {
+    return { id: r.id, actor: r.actor, key: r.idem_key, kind: r.kind, summary: r.summary,
+      paths: JSON.parse(r.paths), evidence: r.evidence, task_id: r.task_id,
+      process: r.process === null ? null : JSON.parse(r.process), created_at: r.created_at };
+  }
+  publishActivity({ key, kind, summary, paths = [], evidence = '', task_id = null, process = null }) {
+    keyOK(key);
+    if (!['plan', 'decision', 'progress', 'file', 'process', 'checkpoint'].includes(kind)) fail('INVALID_INPUT', 'Unknown activity kind.');
+    bounded(summary, LIMITS.text, 'summary', false); bounded(evidence, LIMITS.evidence, 'evidence');
+    if (!Array.isArray(paths) || paths.length > LIMITS.paths) fail('INVALID_INPUT', 'Provide 0–16 paths.');
+    for (const item of paths) {
+      bounded(item, 512, 'path', false);
+      if (path.isAbsolute(item) || item.includes('\\') || /^[A-Za-z]:/.test(item) || item.split('/').some(x => !x || x === '.' || x === '..') || /[\x00-\x1f\x7f]/.test(item))
+        fail('INVALID_PATH', 'Use a normalized relative path without traversal or controls.');
+    }
+    if (task_id !== null) integer(task_id, 1, Number.MAX_SAFE_INTEGER, 'task_id');
+    let processValue = null;
+    if (process !== null) {
+      if (!process || typeof process !== 'object' || Array.isArray(process) || Object.keys(process).sort().join(',') !== 'exit_code,pid,state')
+        fail('INVALID_INPUT', 'process must contain exactly pid, state, and exit_code.');
+      integer(process.pid, 1, Number.MAX_SAFE_INTEGER, 'process.pid');
+      if (!['started', 'exited'].includes(process.state)) fail('INVALID_INPUT', 'Unknown process state.');
+      if (process.exit_code !== null && !Number.isSafeInteger(process.exit_code)) fail('INVALID_INPUT', 'process.exit_code must be an integer or null.');
+      if ((process.state === 'started' && process.exit_code !== null) || (process.state === 'exited' && process.exit_code === null))
+        fail('INVALID_INPUT', 'Started processes have null exit_code; exited processes require an exit_code.');
+      processValue = { pid: process.pid, state: process.state, exit_code: process.exit_code };
+    }
+    const payload = JSON.stringify({ kind, summary, paths, evidence, task_id, process: processValue });
+    return this.tx(() => {
+      const old = this.db.prepare('SELECT * FROM activities WHERE actor=? AND idem_key=?').get(this.actor, key);
+      if (old) {
+        if (old.payload !== payload) fail('IDEMPOTENCY_CONFLICT', 'Activity key is bound to a different exact payload.');
+        return this.activityView(old);
+      }
+      const now = this.now();
+      const id = Number(this.db.prepare('INSERT INTO activities(actor,idem_key,payload,kind,summary,paths,evidence,task_id,process,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+        .run(this.actor, key, payload, kind, summary, JSON.stringify(paths), evidence, task_id,
+          processValue === null ? null : JSON.stringify(processValue), now).lastInsertRowid);
+      this.event('activity.published', id, now);
+      return this.activityView(this.db.prepare('SELECT * FROM activities WHERE id=?').get(id));
+    });
+  }
+  listActivity({ after = 0, limit = 5, actor = null }) {
+    this.pagination(after, limit);
+    if (actor !== null && !isValidActorSlug(actor)) fail('INVALID_INPUT', 'actor must be a valid lowercase actor slug.');
+    const rows = actor === null
+      ? this.db.prepare('SELECT * FROM activities WHERE id>? ORDER BY id LIMIT ?').all(after, limit + 1)
+      : this.db.prepare('SELECT * FROM activities WHERE actor=? AND id>? ORDER BY id LIMIT ?').all(actor, after, limit + 1);
+    return this.page(rows, limit, after, r => this.activityView(r));
   }
   resource(name) {
     bounded(name, 512, 'resource', false);

@@ -133,12 +133,14 @@ try {
   }
   await fs.rm(consumer, { recursive: true });
   await assertAbsent(consumer);
-  const a = await connect(codex), b = await connect(cursor);
-  const statuses = await Promise.all([tool(a, 'status'), tool(b, 'status')]);
-  assert(statuses[0].agent === 'codex' && statuses[1].agent === 'cursor' &&
+  const third = structuredClone(codex);
+  third.args[third.args.indexOf('--agent') + 1] = 'claude';
+  const a = await connect(codex), b = await connect(cursor), c = await connect(third);
+  const statuses = await Promise.all([tool(a, 'status'), tool(b, 'status'), tool(c, 'status')]);
+  assert(statuses[0].agent === 'codex' && statuses[1].agent === 'cursor' && statuses[2].agent === 'claude' &&
     statuses.every(x => x.project_root === project && x.runtime?.package_version === pkg.version), 'Installed status identity mismatch');
   assert([a, b].every(x => x.getServerVersion()?.version === pkg.version), 'Initialized server version mismatch');
-  for (const client of [a, b]) assert((await bounded(() => client.listTools(undefined, options()))).tools.length === 17, 'Tool catalogue mismatch');
+  for (const client of [a, b, c]) assert((await bounded(() => client.listTools(undefined, options()))).tools.length === 19, 'Tool catalogue mismatch');
   const challenge = randomUUID();
   const sent = await tool(a, 'send_message', { recipient: 'cursor', key: 'package-challenge', body: challenge });
   const received = (await tool(b, 'list_messages')).items.find(x => x.id === sent.id);
@@ -158,10 +160,14 @@ try {
     arguments: { name: 'package-proof', expected_revision: 1, body: 'stale' } }, undefined, options()));
   assert(conflict.isError && conflict.structuredContent?.error?.code === 'REVISION_CONFLICT', 'Stale CAS was accepted');
   assert((await tool(b, 'get_memory', { name: 'package-proof' })).body === 'second', 'Failed CAS changed retained memory');
+  const activity = await tool(b, 'publish_activity', { key: 'package-activity', kind: 'file', summary: 'Published shared source progress.', paths: ['src/example.js'] });
+  assert((await tool(c, 'list_activity')).items[0]?.id === activity.id, 'Named third agent did not observe activity');
+  const thirdMessage = await tool(c, 'send_message', { recipient: 'codex', key: 'third-agent', body: 'Reviewed shared progress.' });
+  assert((await tool(a, 'list_messages')).items.some(x => x.id === thirdMessage.id && x.sender === 'claude'), 'Named third-agent message was not received');
   await closeClients();
   proof = { version: pkg.version, packageSha256, packageIntegrity: packed.integrity, fileCount: packed.files.length,
-    node: process.version, platform: process.platform, sourceInstallationRemoved: true, tools: 17,
-    actors: statuses.map(x => x.agent), acknowledgements: [firstAck, secondAck], sharedMemoryCas: true,
+    node: process.version, platform: process.platform, sourceInstallationRemoved: true, tools: 19,
+    actors: statuses.map(x => x.agent), acknowledgements: [firstAck, secondAck], sharedMemoryCas: true, namedAgentActivity: true,
     snapshotCliFallbackProof: false, runtimeBytes: setup.runtime_bytes, actualAIHosts: false, externalDeployment: false };
 } catch (error) { failure = error; }
 finally {

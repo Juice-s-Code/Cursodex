@@ -78,7 +78,7 @@ test('real stdio initialization, status and context agree while roles/schema/too
     assert.equal(status.project_root, root);
     assert.equal(status.schema, 1);
     assert.equal(status.latest_event, 0);
-    assert.equal((await client.listTools()).tools.length, 17);
+    assert.equal((await client.listTools()).tools.length, 19);
     const context = await client.readResource({ uri: 'cursodex://context' });
     assert.deepEqual(JSON.parse(context.contents[0].text), status);
     assert.deepEqual((await call(client, 'status')).runtime, status.runtime);

@@ -52,7 +52,7 @@ test('public call defaults to empty arguments and reports both configured roles 
   for (const actor of ['codex', 'cursor']) {
     const value = receipt(await run(f, flags(f, actor, 'cursodex_status')));
     assert.equal(value.actor, actor);
-    assert.equal(value.tools.length, 17);
+    assert.equal(value.tools.length, 19);
     assert.equal(value.results.length, 1);
     const status = value.results[0].result.structuredContent.data;
     assert.equal(status.agent, actor);
@@ -66,7 +66,7 @@ test('public request mode preserves empty catalog-only and ordered batch calls',
   const empty = await requestFile(f, { actor: 'codex', projectRoot: f.root, calls: [] });
   const catalog = receipt(await run(f, ['--request', empty]));
   assert.equal(catalog.results.length, 0);
-  assert.equal(catalog.tools.length, 17);
+  assert.equal(catalog.tools.length, 19);
   const file = await requestFile(f, { actor: 'cursor', projectRoot: f.root, calls: [
     { name: 'cursodex_status', arguments: {} }, { name: 'cursodex_list_tasks', arguments: { limit: 1 } },
   ] });
@@ -127,7 +127,7 @@ test('invalid public call forms fail before project state is created', { timeout
   const cases = [
     [], ['--unknown', 'x'], [...base, '--agent', 'cursor'], ['--request', file, '--request', file],
     ['--request', file, '--agent', 'codex'], [...base, '--arguments', '{}', '--arguments-file', file],
-    flags(f, 'other', 'cursodex_status'), ['--agent', 'codex', '--project', 'relative', '--tool', 'cursodex_status'],
+    flags(f, 'bad actor', 'cursodex_status'), ['--agent', 'codex', '--project', 'relative', '--tool', 'cursodex_status'],
     flags(f, 'codex', 'shell'), flags(f, 'codex', 'cursodex_not_a_tool'),
     [...base, '--deadline-ms', '999'], [...base, '--deadline-ms', '60001'], [...base, '--deadline-ms', '1e3'],
     [...base, '--arguments', '{'], [...base, '--arguments', '[]'],
@@ -145,7 +145,7 @@ test('bounded request files reject malformed UTF-8, shape errors, oversized byte
   const f = await fixture(t), valid = { actor: 'codex', projectRoot: f.root, calls: [] };
   const invalid = [
     Buffer.from('{'), Buffer.from([123, 34, 0xff, 34, 58, 49, 125]), Buffer.alloc(65537, 32),
-    JSON.stringify({ ...valid, remoteToken: 'not-supported' }), JSON.stringify({ ...valid, actor: 'other' }),
+    JSON.stringify({ ...valid, remoteToken: 'not-supported' }), JSON.stringify({ ...valid, actor: 'bad actor' }),
     JSON.stringify({ ...valid, deadlineMs: 1000.5 }),
     JSON.stringify({ ...valid, calls: Array.from({ length: 21 }, () => ({ name: 'cursodex_status', arguments: {} })) }),
     JSON.stringify({ ...valid, calls: [{ name: 'cursodex_status', arguments: {}, actor: 'cursor' }] }),

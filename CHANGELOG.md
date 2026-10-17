@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0 — Named agents and live collaboration
+
+- Support distinct configured agent names for Codex, Cursor, Claude and cooperating workers, including credential-bound cloud identities. Preserve existing two-agent configuration and schema-1 records.
+- Add durable, bounded activity publication and pagination for authored plans, decisions, file references and process assertions. Existing message privacy, exact retry keys, task/note revisions and file claims remain.
+- Add finite, cancellation-aware `watch` and opt-in `bridge` commands for Cursor structured terminal streams, Cursor hooks and explicit JSON activity. Stream adapters share metadata and project-relative paths; they do not ingest prompts, raw terminal output, tool arguments or hidden reasoning.
+- Publish live-collaboration setup examples and update the portable agent skill. Actual host loading and real peer responses still require verification after a supported reload.
+
+
 ## 0.1.5 — 2026-10-12
 
 - Settle interrupted cloud requests and retire cancelled/disconnected sessions so abandoned exchanges cannot hold capacity indefinitely; retain durable state and explicit reconnect semantics.

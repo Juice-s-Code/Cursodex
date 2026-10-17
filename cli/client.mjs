@@ -4,6 +4,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { PACKAGE_VERSION } from '../src/runtime.js';
+import { isValidActorSlug } from '../src/identity.js';
 
 export const MAX_REQUEST_BYTES = 65536;
 const publicTools = new Set([
@@ -11,7 +12,7 @@ const publicTools = new Set([
   'cursodex_create_task', 'cursodex_get_task', 'cursodex_list_tasks', 'cursodex_update_task',
   'cursodex_put_memory', 'cursodex_get_memory', 'cursodex_list_memories',
   'cursodex_acquire_claim', 'cursodex_list_claims', 'cursodex_renew_claim', 'cursodex_release_claim',
-  'cursodex_list_events', 'cursodex_wait_events',
+  'cursodex_list_events', 'cursodex_wait_events', 'cursodex_publish_activity', 'cursodex_list_activity',
 ]);
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value) &&
   [Object.prototype, null].includes(Object.getPrototypeOf(value));
@@ -72,7 +73,7 @@ export function readJSONFile(filename, label = 'Request') {
 export function validateRequest(request) {
   jsonValue(request);
   fields(request, ['actor', 'projectRoot', 'deadlineMs', 'calls'], 'Request');
-  if (!['codex', 'cursor'].includes(request.actor)) throw new Error('actor must be codex or cursor.');
+  if (!isValidActorSlug(request.actor)) throw new Error('actor must be a lowercase agent name (1–64 characters).');
   if (typeof request.projectRoot !== 'string' || !path.isAbsolute(request.projectRoot)) throw new Error('projectRoot must be absolute.');
   if (!fs.statSync(request.projectRoot).isDirectory()) throw new Error('projectRoot must be an existing directory.');
   if (!Array.isArray(request.calls) || request.calls.length > 20) throw new Error('Provide at most 20 calls.');

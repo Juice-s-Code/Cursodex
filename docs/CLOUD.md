@@ -52,3 +52,8 @@ When a validated cancellation targets an outstanding request, or a client discon
 After restarting the service, transport sessions are new while SQLite messages, tasks, notes, claims and events remain. Always reread task/note revisions and reconcile live claims. An uncertain response may have committed a write: use the same exact message key for retries or reread a CAS record before modifying it.
 
 Back up the complete `.cursodex` directory while the service is stopped. Retain WAL/SHM files if present; do not take an arbitrary live file copy or move state to a different project root. Rotate both environment credentials through the service and host lifecycle if exposed. Stop the service before maintaining its state. Never include private messages, credentials or database contents in a public issue.
+
+
+## Named agents and live work activity (0.2.0)
+
+`--agent` accepts distinct lowercase names such as `claude` or `research-1`; identity is fixed when the stdio server starts. For cloud use, `CURSODEX_AGENT_TOKENS` is a JSON object mapping 2–64 agent names to distinct 32–512 byte non-space ASCII credentials. The existing `CURSODEX_CODEX_TOKEN` and `CURSODEX_CURSOR_TOKEN` pair remains supported when that map is absent. Never put a credential in a tool argument, shared note or terminal feed. See [Live collaboration](LIVE_COLLABORATION.md) for the 19-tool protocol, finite `watch`, opt-in Cursor stream/hook connectors and their acceptance boundaries.

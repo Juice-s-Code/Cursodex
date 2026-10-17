@@ -1,6 +1,6 @@
 interface:
   display_name: "Cursodex"
-  short_description: "Coordinate agents with bounded shared project context"
-  default_prompt: "Use $cursodex to coordinate a bounded handoff on the authorized project, verify role and source ownership, and preserve visible evidence and unresolved limits."
+  short_description: "Share messages, tasks and live work across named agents"
+  default_prompt: "Use $cursodex to collaborate on the authorized project with named identities, messages, tasks and explicit activity; verify ownership and preserve visible evidence and unresolved limits."
 policy:
   allow_implicit_invocation: true

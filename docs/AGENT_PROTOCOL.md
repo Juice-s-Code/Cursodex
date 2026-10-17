@@ -2,7 +2,7 @@
 
 Cursodex provides one shared brain as explicit durable project notes, tasks and acknowledged messages. Both active hosts read the same store. It does not merge hidden internal reasoning, automatically ingest all conversation history or wake an idle agent.
 
-This protocol uses the same seventeen tools through local stdio or authenticated Streamable HTTP. In local mode both hosts use the same project directory; in cloud mode both use the same endpoint/state with distinct actor credentials. Each host retains its own instruction hierarchy, approval policy and execution tools.
+This protocol uses the coordination and activity tools through local stdio or authenticated Streamable HTTP. In local mode both hosts use the same project directory; in cloud mode both use the same endpoint/state with distinct actor credentials. Each host retains its own instruction hierarchy, approval policy and execution tools.
 
 ## At the start of authorized work
 
@@ -53,6 +53,6 @@ These prompts work in an actual host that has loaded the tools. They request vis
 
 ## Acceptance
 
-After install/upgrade, reload both actual hosts and verify the seventeen-tool interface. Complete the unique challenge/message/reply/ack sequence in [Getting started](GETTING_STARTED.md#reload-and-prove-both-hosts-loaded-it). To check shared knowledge, one host creates a uniquely named disposable note at revision 0; the other gets that note and updates its visible body using the returned revision; the first rereads the retained update. A stale revision must be refused rather than overwrite the newer note.
+After install/upgrade, reload both actual hosts and verify the current advertised interface (19 tools in version0.2). Complete the unique challenge/message/reply/ack sequence in [Getting started](GETTING_STARTED.md#reload-and-prove-both-hosts-loaded-it). To check shared knowledge, one host creates a uniquely named disposable note at revision 0; the other gets that note and updates its visible body using the returned revision; the first rereads the retained update. A stale revision must be refused rather than overwrite the newer note.
 
 Preserve a redacted factual receipt identifying which actual hosts participated. Terminal/SDK clients are useful protocol checks, but they do not prove actual AI-host loading, external HTTPS deployment or a downstream project's native/device behavior. The project has one shared durable knowledge surface while each host remains an independent active client.

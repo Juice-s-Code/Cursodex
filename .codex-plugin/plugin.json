@@ -1,7 +1,7 @@
 {
   "name": "cursodex",
-  "version": "0.1.5",
-  "description": "A portable skill for bounded project coordination through Cursodex MCP.",
+  "version": "0.2.0",
+  "description": "Named-agent collaboration and live work activity through Cursodex MCP.",
   "author": {
     "name": "Juice-s-Code"
   },

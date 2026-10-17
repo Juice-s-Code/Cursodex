@@ -17,7 +17,7 @@ export function parseCallArguments(argv) {
     return validateRequest(readJSONFile(options.get('--request')));
   }
   if (!options.has('--agent') || !options.has('--project') || !options.has('--tool'))
-    throw new Error('Call requires --request ABS or --agent codex|cursor --project ABS --tool cursodex_NAME.');
+    throw new Error('Call requires --request ABS or --agent NAME --project ABS --tool cursodex_NAME.');
   if (options.has('--arguments') && options.has('--arguments-file')) throw new Error('Choose only one arguments input.');
   const rawDeadline = options.get('--deadline-ms');
   if (rawDeadline !== undefined && !/^[1-9][0-9]*$/.test(rawDeadline)) throw new Error('--deadline-ms must be an integer from 1000 to 60000.');

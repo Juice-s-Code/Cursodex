@@ -1,6 +1,6 @@
 # Agent integrations
 
-Cursodex has three separate surfaces: its MCP server, a portable Agent Skill, and a skills-only Codex plugin manifest. The skill guides cooperating active clients; its installation does not configure MCP or automatically wake another agent. Native MCP operations are preferred. A bounded CLI SDK fallback is available when the installed release advertises `call`.
+Cursodex has separate surfaces: its MCP server, a portable Agent Skill, a skills-only Codex plugin manifest, and explicit activity/watch/bridge interfaces. The skill guides cooperating active clients; its installation does not configure MCP or automatically wake another agent. Activity events and Cursor hooks are observational inputs, not dispatch. Native MCP operations are preferred. A bounded CLI SDK fallback is available when the installed release advertises `call`.
 
 ## Install the portable skill
 
@@ -28,7 +28,7 @@ A compatible MCP host can use stdio command `cursodex` with arguments:
 ["server", "--agent", "cursor", "--project", "/absolute/project"]
 ~~~
 
-The example role must be explicitly assigned and unused. Only `codex` and `cursor` exist; a third-party host can occupy one free coordination slot, not create arbitrary additional actors or impersonate an active host. Both clients must resolve to the same local project, or use the same authenticated HTTPS `/mcp` endpoint with separate role credentials. Configure HTTP headers using the host's documented secret handling and the [cloud guide](CLOUD.md); credentials are never plugin/skill content. Do not mix duplicate local and remote entries for the same work.
+The example role must be explicitly assigned and unused. Actor names are configured lowercase slugs (`^[a-z][a-z0-9_-]{0,63}$`). Assign each cooperating host a distinct slug in the server configuration or authenticated token map; a slug labels a configured connection and does not attest to an account, model, or human. Both clients must resolve to the same local project, or use the same authenticated HTTPS `/mcp` endpoint with separate role credentials. Configure HTTP headers using the host's documented secret handling and the [cloud guide](CLOUD.md); credentials are never plugin/skill content. Do not mix duplicate local and remote entries for the same work.
 
 ## Use the bounded fallback
 
@@ -50,6 +50,14 @@ A sequential request can use `cursodex call --request /absolute/request.json` wi
 ~~~
 
 Use only the assigned role, verify result identity, and inspect all error/deadline/cleanup facts. At most 20 calls and a 1000–60000 ms deadline are accepted. This is an SDK protocol client with a receipt, not a model dispatcher or a way to hot-load native tools. A sequence is not an atomic batch: successful earlier writes can survive a later timeout. Reconcile exact-key and CAS outcomes through the public tools, never direct SQLite edits. Follow [the active-client protocol](AGENT_PROTOCOL.md).
+
+## Live activity and Cursor visibility
+
+`cursodex_publish_activity` and `cursodex_list_activity` carry concise visible project updates. `cursodex watch` is an explicit finite reader; `cursodex bridge` consumes user-supplied NDJSON from `cursor-stream`, `cursor-hook`, or `json`. See [Live collaboration](LIVE_COLLABORATION.md) for API fields, limits, Cursor opt-in, and privacy rules.
+
+Cursor CLI's `stream-json` mode emits structured session, assistant-visible text, and tool-call events. Pipe only a user-started CLI run to the bridge when live terminal visibility is wanted. The IDE hooks route is separate and hook-specific; `afterShellExecution` reports output after a command finishes. Neither route exposes hidden model reasoning. The bridge defaults to metadata-only and does not start/resume a model, attach to an arbitrary terminal, or install hooks/configuration.
+
+Authenticated cloud deployments may map distinct actor bearer tokens with `CURSODEX_AGENT_TOKENS` (JSON slug-to-token object). The legacy Codex/Cursor token pair remains a compatibility fallback. Keep secrets in the server's environment and use the supported HTTPS `/mcp` setup.
 
 ## Optional Codex plugin packaging
 

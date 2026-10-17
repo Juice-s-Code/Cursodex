@@ -5,6 +5,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { CancelledNotificationSchema, isInitializeRequest, isJSONRPCNotification, isJSONRPCRequest } from '@modelcontextprotocol/sdk/types.js';
 import { createServer } from './index.js';
 import { Store } from './store.js';
+import { isValidActorSlug } from './identity.js';
 
 const MAX_BODY = 65536, MAX_SESSIONS = 16, MAX_INFLIGHT = 32, IDLE_MS = 1800000;
 const digest = value => createHash('sha256').update(value).digest();
@@ -14,12 +15,22 @@ const json = (res, status, error) => {
   res.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
   res.end(JSON.stringify({ error }));
 };
-function credentials(env) {
-  const codex = env.CURSODEX_CODEX_TOKEN, cursor = env.CURSODEX_CURSOR_TOKEN;
+export function credentials(env) {
   const valid = value => typeof value === 'string' && /^[!-~]{32,512}$/.test(value);
-  if (!valid(codex) || !valid(cursor) || same(codex, cursor))
-    throw Error('Set distinct CURSODEX_CODEX_TOKEN and CURSODEX_CURSOR_TOKEN credentials of 32–512 printable non-space ASCII bytes.');
-  return { codex, cursor };
+  let configured;
+  if (env.CURSODEX_AGENT_TOKENS !== undefined) {
+    if (typeof env.CURSODEX_AGENT_TOKENS !== 'string' || Buffer.byteLength(env.CURSODEX_AGENT_TOKENS) > 65536)
+      throw Error('CURSODEX_AGENT_TOKENS must be a bounded JSON object.');
+    try { configured = JSON.parse(env.CURSODEX_AGENT_TOKENS); } catch { throw Error('CURSODEX_AGENT_TOKENS must be valid JSON.'); }
+    if (!configured || Array.isArray(configured) || typeof configured !== 'object')
+      throw Error('CURSODEX_AGENT_TOKENS must map agent names to distinct credentials.');
+  } else configured = { codex: env.CURSODEX_CODEX_TOKEN, cursor: env.CURSODEX_CURSOR_TOKEN };
+  const entries = Object.entries(configured);
+  if (entries.length < 2 || entries.length > 64 || entries.some(([name, token]) => !isValidActorSlug(name) || !valid(token)))
+    throw Error('Set distinct CURSODEX_CODEX_TOKEN and CURSODEX_CURSOR_TOKEN credentials or CURSODEX_AGENT_TOKENS with 2–64 agent names and 32–512 printable non-space ASCII byte credentials.');
+  for (let i = 0; i < entries.length; i++) for (let j = 0; j < i; j++)
+    if (same(entries[i][1], entries[j][1])) throw Error('Agent credentials must be distinct.');
+  return Object.fromEntries(entries);
 }
 async function body(req, res) {
   const declared = Number(req.headers['content-length']);
@@ -144,7 +155,7 @@ export async function startCloud({ projectRoot, host = '127.0.0.1', port = 8787,
       let actor;
       if (typeof auth === 'string' && auth.startsWith('Bearer ') && auth.length <= 519) {
         const supplied = auth.slice(7);
-        for (const name of ['codex', 'cursor']) if (same(supplied, tokens[name])) actor = name;
+        for (const name of Object.keys(tokens)) if (same(supplied, tokens[name])) actor = name;
       }
       if (!actor) { res.setHeader('WWW-Authenticate', 'Bearer realm="Cursodex"'); return json(res, 401, 'Bearer credential required.'); }
       if (closing) return json(res, 503, 'Server is shutting down.');
