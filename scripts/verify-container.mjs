@@ -171,7 +171,7 @@ try {
   assert(statuses[0].agent === 'codex' && statuses[1].agent === 'cursor' &&
     statuses.every(x => x.project_root === '/workspace' && x.runtime?.package_version === pkg.version), 'Container identity/version mismatch');
   assert([a, b].every(x => x.getServerVersion()?.version === pkg.version), 'HTTP initialization version mismatch');
-  for (const client of [a, b]) assert((await bounded(() => client.listTools(undefined, options()))).tools.length === 17, 'HTTP tool catalogue mismatch');
+  for (const client of [a, b]) assert((await bounded(() => client.listTools(undefined, options()))).tools.length === 19, 'HTTP tool catalogue mismatch');
   const challenge = randomUUID();
   const sent = await tool(a, 'send_message', { recipient: 'cursor', key: 'container-challenge', body: challenge });
   const delivered = (await tool(b, 'list_messages')).items.find(x => x.id === sent.id);
@@ -185,6 +185,8 @@ try {
   const initial = await tool(b, 'get_memory', { name: 'container-proof' });
   assert(initial.body === challenge && initial.revision === 1, 'Initial container memory mismatch');
   await tool(b, 'put_memory', { name: 'container-proof', expected_revision: initial.revision, body: 'retained:' + challenge });
+  const activity = await tool(b, 'publish_activity', { key: 'container-activity', kind: 'file', summary: 'Container activity persists across restart.', paths: ['src/example.js'] });
+  assert((await tool(a, 'list_activity')).items[0]?.id === activity.id, 'Container activity was not shared');
   const finalMemory = await tool(a, 'get_memory', { name: 'container-proof' });
   assert(finalMemory.revision === 2 && finalMemory.body === 'retained:' + challenge, 'Container CAS update mismatch');
   const conflict = await bounded(() => a.callTool({ name: 'cursodex_put_memory',
@@ -199,6 +201,8 @@ try {
   const reopenedStatuses = await Promise.all([tool(reopened, 'status'), tool(peer, 'status')]);
   assert(reopenedStatuses[0].agent === 'codex' && reopenedStatuses[1].agent === 'cursor' &&
     reopenedStatuses.every(x => x.project_root === '/workspace' && x.runtime?.package_version === pkg.version), 'Restarted container identity mismatch');
+  const recoveredActivity = (await tool(reopened, 'list_activity')).items.find(x => x.id === activity.id);
+  assert(recoveredActivity?.summary === activity.summary && recoveredActivity.actor === 'cursor', 'Restart lost shared activity');
   const recoveredMemory = await tool(reopened, 'get_memory', { name: 'container-proof' });
   assert(recoveredMemory.body === finalMemory.body && recoveredMemory.revision === finalMemory.revision, 'Memory did not persist across restart');
   const oldMessage = (await tool(reopened, 'list_messages', { direction: 'sent', after: sent.id - 1, limit: 1 })).items[0];
@@ -208,7 +212,7 @@ try {
   await closeClients();
   const finalStop = await stop();
   proof = { version: pkg.version, imageId: built.Id, dockerfileSha256, lockSha256, node: process.version,
-    tools: 17, actors: statuses.map(x => x.agent), acknowledgements: [firstAck, secondAck], memoryCas: true,
+    tools: 19, actors: statuses.map(x => x.agent), acknowledgements: [firstAck, secondAck], memoryCas: true, activitySharedAndRetained: true,
     persistenceAfterRestart: true, unauthenticatedRequestRefused: true, firstStop, finalStop,
     actualAIHosts: false, externalDeployment: false, containerOnlyLoopback: true };
 } catch (error) { failure = error; }
