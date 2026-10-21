@@ -98,6 +98,34 @@ async function session(options, work, signal, transportFactory) {
     env: { ...process.env, PROJECT_ROOT: options.projectRoot, CURSODEX_AGENT: options.actor }, stderr: 'pipe' });
   // Do not stream unrelated child diagnostics into the activity channel.
   transport.stderr?.on('data', () => {});
+  // Every close path (abort, SDK/client, finally) joins the same operation.
+  // The SDK clears its child reference before awaiting exit; a concurrent
+  // second close otherwise returns while the first child still owns its cwd.
+  let closing, cleanupFailure, closeObserved = false, markClosed;
+  const closed = new Promise(resolve => { markClosed = resolve; });
+  const previousOnClose = transport.onclose;
+  transport.onclose = () => { closeObserved = true; markClosed(); previousOnClose?.(); };
+  const rawClose = transport.close.bind(transport);
+  transport.close = () => closing ??= Promise.resolve().then(async () => {
+    const childWasStarted = transport.pid !== null && transport.pid !== undefined;
+    try {
+      await rawClose();
+      if (childWasStarted && !closeObserved) {
+        let timer;
+        try {
+          await Promise.race([closed, new Promise((_, reject) => {
+            timer = setTimeout(() => reject(Error('SDK child close was not observed.')), 3000);
+          })]);
+        } finally { clearTimeout(timer); }
+      }
+    } catch (cause) {
+      const error = new Error('Live MCP cleanup failed.', { cause });
+      // SDK initialization calls close() without awaiting its rejection.
+      // Keep close joinable/resolved for the SDK, then surface the captured
+      // failure from our awaited session cleanup below.
+      error.code = 'CLEANUP_FAILED'; cleanupFailure = error;
+    }
+  });
   const closeOnAbort = () => { void transport.close().catch(() => {}); };
   signal.addEventListener('abort', closeOnAbort, { once: true });
   const call = async (name, args = {}) => {
@@ -110,7 +138,7 @@ async function session(options, work, signal, transportFactory) {
     const status = await call('status');
     if (status.agent !== options.actor || status.project_root !== options.projectRoot) throw Error('Live identity/project mismatch.');
     return await work(call, status);
-  } finally { signal.removeEventListener('abort', closeOnAbort); try { await client.close(); } finally { await transport.close(); } }
+  } finally { signal.removeEventListener('abort', closeOnAbort); try { await client.close(); } finally { await transport.close(); if (cleanupFailure) throw cleanupFailure; } }
 }
 export async function runLive(command, options, { input = process.stdin, emit = value => process.stdout.write(JSON.stringify(value) + '\n'), signal, transportFactory } = {}) {
   const controller = new AbortController(), started = performance.now();
@@ -155,7 +183,7 @@ export async function runLive(command, options, { input = process.stdin, emit = 
     // Attach immediately: cancellation/closed input may reject after the deadline wins.
     await Promise.race([work, stopped]);
     if (controller.signal.aborted && command === 'bridge') input.destroy();
-    await work.catch(error => { if (!controller.signal.aborted) throw error; });
+    await work.catch(error => { if (!controller.signal.aborted || error.code === 'CLEANUP_FAILED') throw error; });
     return { stopped: controller.signal.aborted, durationReached: timedOut };
   } finally {
     clearTimeout(timer); signal?.removeEventListener('abort', cancel);

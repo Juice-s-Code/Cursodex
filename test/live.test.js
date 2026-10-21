@@ -85,3 +85,49 @@ test('duration and external cancellation stop an unresponsive MCP initialization
     } finally { clearTimeout(timer); }
   }
 });
+
+test('cancellation joins the first close until the transport actually finishes', { timeout: 5000 }, async t => {
+  const projectRoot = await fixture(t), controller = new AbortController();
+  let startClose, releaseClose, closeCalls = 0, settled = false;
+  const closing = new Promise(resolve => { startClose = resolve; });
+  const gate = new Promise(resolve => { releaseClose = resolve; });
+  const transportFactory = () => ({
+    pid: 123,
+    async start() {},
+    async send(message) {
+      if (message.method === 'initialize') queueMicrotask(() => this.onmessage?.({ jsonrpc: '2.0', id: message.id,
+        result: { protocolVersion: '2025-11-25', capabilities: { tools: {} }, serverInfo: { name: 'close-fixture', version: '1' } } }));
+      if (message.method === 'tools/call' && message.params.name === 'cursodex_status') queueMicrotask(() => this.onmessage?.({ jsonrpc: '2.0', id: message.id,
+        result: { content: [], structuredContent: { ok: true, data: { agent: 'claude', project_root: projectRoot, latest_event: 0 } } } }));
+    },
+    async close() {
+      closeCalls++;
+      if (this.pid === null) return;
+      this.pid = null; startClose(); await gate; this.onclose?.();
+    }
+  });
+  const work = runLive('watch', { actor: 'claude', projectRoot, durationMs: 3000, after: 0 }, {
+    signal: controller.signal, transportFactory, emit(value) { if (value.type === 'connected') controller.abort(); }
+  }).then(result => { settled = true; return result; });
+  try {
+    await closing;
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(settled, false, 'a stop receipt must not precede actual transport cleanup');
+    assert.equal(closeCalls, 1, 'concurrent SDK/finally close calls must join the first operation');
+  } finally { releaseClose(); await work; }
+  assert.equal(settled, true); assert.equal(closeCalls, 1);
+});
+
+test('cancellation propagates cleanup failure instead of reporting a clean stop', { timeout: 5000 }, async t => {
+  const projectRoot = await fixture(t), controller = new AbortController();
+  const transportFactory = () => ({
+    async start() {}, async send() {},
+    async close() { throw Error('fixture close failure'); }
+  });
+  const timer = setTimeout(() => controller.abort(), 100);
+  try {
+    await assert.rejects(runLive('watch', { actor: 'claude', projectRoot, durationMs: 3000, after: 0 }, {
+      signal: controller.signal, transportFactory, emit() {}
+    }), error => error.code === 'CLEANUP_FAILED');
+  } finally { clearTimeout(timer); }
+});
